@@ -2,7 +2,7 @@ import { fetchPageWithCookies } from '@/utils/http';
 import { parseFolders, parseFiles, parsePagination, addPagination, extractUsernameFromProfileUrl, parseUserSections } from '@/utils/parser';
 import { mergeCookies } from '@/utils/cookies';
 import * as cheerio from 'cheerio';
-import type { Folder, File } from '@/types';
+import type { Folder, File, UserSection } from '@/types';
 
 export async function scanFolder(
   url: string,
@@ -130,17 +130,42 @@ export function collectAllFiles(folder: Folder): File[] {
   return Array.from(filesMap.values());
 }
 
+export async function getProfileSections(
+  profileUrl: string,
+  cookies: Record<string, string>
+): Promise<UserSection[]> {
+  const username = extractUsernameFromProfileUrl(profileUrl);
+  if (!username) {
+    throw new Error('Не удалось извлечь username из URL профиля');
+  }
+  
+  console.log(`Loading profile sections for user: ${username}`);
+  
+  // Получаем HTML страницы профиля
+  const baseUrl = 'https://spaces.im';
+  const cleanProfileUrl = profileUrl.split('?')[0]; // Убираем query параметры
+  const response = await fetchPageWithCookies(cleanProfileUrl, cookies);
+  const html = response.html;
+  
+  // Парсим секции пользователя
+  const sections = parseUserSections(html, username, baseUrl);
+  console.log(`Found ${sections.length} sections for user ${username}`);
+  
+  return sections;
+}
+
 export async function scanProfileByUrl(
   profileUrl: string,
   cookies: Record<string, string>,
-  onCookiesUpdate?: (cookies: Record<string, string>) => void
+  onCookiesUpdate?: (cookies: Record<string, string>) => void,
+  selectedSectionIds?: string[]
 ): Promise<{ folders: Folder[]; files: File[] }> {
   const username = extractUsernameFromProfileUrl(profileUrl);
   if (!username) {
     throw new Error('Не удалось извлечь username из URL профиля');
   }
   
-  console.log(`Scanning profile for user: ${username}`);
+  console.log(`Scanning profile for user: ${username}`, { selectedSectionIds });
   
   // Получаем HTML страницы профиля
   const baseUrl = 'https://spaces.im';
@@ -160,12 +185,19 @@ export async function scanProfileByUrl(
   const sections = parseUserSections(html, username, baseUrl);
   console.log(`Found ${sections.length} sections for user ${username}`);
   
+  // Фильтруем секции по выбранным
+  const sectionsToScan = selectedSectionIds && selectedSectionIds.length > 0
+    ? sections.filter(s => selectedSectionIds.includes(s.id))
+    : sections;
+  
+  console.log(`Scanning ${sectionsToScan.length} selected sections`);
+  
   const allFolders: Folder[] = [];
   const allFiles: File[] = [];
   const filesMap = new Map<string, File>();
   
-  // Сканируем каждую секцию, пропуская папки с паролем
-  for (const section of sections) {
+  // Сканируем каждую выбранную секцию, пропуская папки с паролем
+  for (const section of sectionsToScan) {
     console.log(`Scanning section: ${section.name} (${section.url})`);
     try {
       const rootFolder = await scanFolder(

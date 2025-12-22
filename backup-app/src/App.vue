@@ -100,16 +100,35 @@
                       class="flex-1 px-4 py-2 bg-dark-hover border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 text-sm"
                     />
                     <button
-                      @click="handleScanProfile"
+                      @click="handleLoadProfileSections"
                       :disabled="!profileUrl || backupStore.inProgress || !authStore.user"
                       class="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
                     >
-                      Сканировать
+                      Загрузить разделы
                     </button>
                   </div>
                   <p class="text-xs text-gray-400 mt-2">
                     Папки с паролем будут пропущены
                   </p>
+
+                  <div v-if="backupStore.profileSections.length > 0" class="mt-4">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">
+                      Выберите разделы для бэкапа
+                    </label>
+                    <SectionSelector
+                      :sections="backupStore.profileSections"
+                      :selected="backupStore.selectedProfileSections"
+                      :disabled="backupStore.inProgress"
+                      @update:selected="backupStore.setSelectedProfileSections"
+                    />
+                    <button
+                      @click="handleScanProfile"
+                      :disabled="backupStore.selectedProfileSections.length === 0 || backupStore.inProgress"
+                      class="mt-3 w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+                    >
+                      {{ backupStore.status === 'scanning' ? 'Сканирование...' : 'Сканировать выбранные разделы' }}
+                    </button>
+                  </div>
                 </div>
 
                 <div class="flex gap-2">
@@ -259,6 +278,11 @@ function handleLogout() {
   authStore.logout()
   backupStore.resetScan()
   profileUrl.value = ''
+}
+
+async function handleLoadProfileSections() {
+  if (!profileUrl.value.trim() || !authStore.user) return
+  await backupStore.loadProfileSections(profileUrl.value.trim())
 }
 
 async function handleScanProfile() {

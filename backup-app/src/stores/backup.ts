@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, shallowRef } from 'vue'
-import type { File, Folder, BackupStatus, SaveMode, FileDownloadProgress } from '@/types'
-import { scanFolder, collectAllFiles, scanProfileByUrl } from '@/utils/scanner'
+import type { File, Folder, BackupStatus, SaveMode, FileDownloadProgress, UserSection } from '@/types'
+import { scanFolder, collectAllFiles, scanProfileByUrl, getProfileSections } from '@/utils/scanner'
 import { downloadAndSaveFileOnServer } from '@/utils/fileSaver'
 import { createCookiesFromSid } from '@/utils/cookies'
 import { useAuthStore } from '@/stores/auth'
@@ -55,6 +55,9 @@ export const useBackupStore = defineStore('backup', () => {
   })
 
   const hasFailedFiles = computed(() => failedFiles.value.length > 0)
+
+  const profileSections = ref<UserSection[]>([])
+  const selectedProfileSections = ref<string[]>([])
 
   async function scan() {
     if (!authStore.user || authStore.selectedSections.length === 0) return
@@ -143,8 +146,29 @@ export const useBackupStore = defineStore('backup', () => {
     }
   }
 
-  async function scanProfile(profileUrl: string) {
+  async function loadProfileSections(profileUrl: string) {
     if (!authStore.user) return
+
+    try {
+      const cookiesObj = authStore.fullCookies.sid
+        ? authStore.fullCookies
+        : createCookiesFromSid(authStore.sid)
+
+      const sections = await getProfileSections(profileUrl, cookiesObj)
+      profileSections.value = sections
+      selectedProfileSections.value = sections.map((s) => s.id)
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error'
+      errors.value.push({ file: 'Load Profile Sections', error: errorMsg })
+    }
+  }
+
+  function setSelectedProfileSections(sectionIds: string[]) {
+    selectedProfileSections.value = sectionIds
+  }
+
+  async function scanProfile(profileUrl: string) {
+    if (!authStore.user || selectedProfileSections.value.length === 0) return
 
     try {
       const cookiesObj = authStore.fullCookies.sid
@@ -165,7 +189,8 @@ export const useBackupStore = defineStore('backup', () => {
         (newCookies) => {
           updatedCookies = newCookies
           authStore.updateCookies(newCookies)
-        }
+        },
+        selectedProfileSections.value
       )
 
       console.log(`Total files collected from profile: ${files.length}`)
@@ -403,6 +428,8 @@ export const useBackupStore = defineStore('backup', () => {
     hasFailedFiles,
     scan,
     scanProfile,
+    loadProfileSections,
+    setSelectedProfileSections,
     resetScan,
     downloadSingleFile,
     download,
@@ -411,6 +438,8 @@ export const useBackupStore = defineStore('backup', () => {
     retryFile,
     retryAllFailed,
     getFileViewUrl,
+    profileSections,
+    selectedProfileSections,
   }
 })
 
