@@ -66,6 +66,5 @@ export interface BackupState {
   status: BackupStatus;
   currentFile?: string;
   fileProgress: Map<string, FileDownloadProgress>;
-  directoryHandle: FileSystemDirectoryHandle | null;
   errors: Array<{ file: string; error: string }>;
 }

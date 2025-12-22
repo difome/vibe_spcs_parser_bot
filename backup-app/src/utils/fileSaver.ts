@@ -1,104 +1,78 @@
-import type { Folder, File } from '../types';
+import type { File } from '../types';
 import type { SaveMode } from '../types';
 import { sanitizeFileName } from './formatters';
+import { config } from '../config';
+import axios from 'axios';
+import { extractDownloadUrlFromFilePage } from './downloader';
 
-export async function selectDirectory(): Promise<FileSystemDirectoryHandle | null> {
-  if ('showDirectoryPicker' in window) {
-    try {
-      const handle = await (window as any).showDirectoryPicker();
-      if (handle && 'requestPermission' in handle) {
-        const permission = await handle.requestPermission({ mode: 'readwrite' });
-        if (permission !== 'granted') {
-          throw new Error('Permission denied');
-        }
+export async function downloadAndSaveFileOnServer(
+  file: File,
+  cookies: Record<string, string>,
+  username: string,
+  saveMode: SaveMode,
+  onProgress?: (progress: number) => void
+): Promise<void> {
+  let fileUrl = file.directUrl || file.downloadUrl;
+  
+  if (!fileUrl || fileUrl.includes('/view/') || !fileUrl.includes('/download/')) {
+    let viewUrl = file.downloadUrl?.includes('/view/') 
+      ? file.downloadUrl 
+      : null;
+    
+    if (!viewUrl) {
+      if (file.type === 7) {
+        viewUrl = `https://spaces.im/pictures/view/${file.id}/`;
+      } else if (file.type === 6) {
+        viewUrl = `https://spaces.im/music/view/${file.id}/`;
+      } else if (file.type === 25) {
+        viewUrl = `https://spaces.im/video/view/${file.id}/`;
+      } else if (file.type === 5) {
+        viewUrl = `https://spaces.im/files/view/${file.id}/`;
+      } else {
+        viewUrl = `https://spaces.im/files/view/${file.id}/`;
       }
-      return handle;
-    } catch (error) {
-      if ((error as Error).name !== 'AbortError') {
-        console.error('Error selecting directory:', error);
+    }
+    
+    const extractedUrl = await extractDownloadUrlFromFilePage(viewUrl, cookies);
+    if (extractedUrl) {
+      fileUrl = extractedUrl;
+    } else {
+      if (file.type === 7) {
+        fileUrl = `https://spaces.im/pictures/download/${file.id}/`;
+      } else if (file.type === 6) {
+        fileUrl = `https://spaces.im/music/download/${file.id}/`;
+      } else if (file.type === 25) {
+        fileUrl = `https://spaces.im/video/download/${file.id}/`;
+      } else if (file.type === 5) {
+        fileUrl = `https://spaces.im/files/download/${file.id}/`;
+      } else {
+        fileUrl = `https://spaces.im/files/download/${file.id}/`;
       }
-      return null;
     }
   }
-  return null;
-}
-
-export async function saveFilesToDirectory(
-  rootFolder: Folder,
-  files: Map<string, ArrayBuffer>,
-  directoryHandle: FileSystemDirectoryHandle,
-  saveMode: SaveMode
-): Promise<void> {
+  
+  const filePath = saveMode === 'flat' 
+    ? `${file.name}${file.extension}`
+    : file.path;
+  
   try {
-    if (saveMode === 'flat') {
-      const usedNames = new Set<string>();
-      
-      for (const [fileId, data] of files.entries()) {
-        const file = findFileById(rootFolder, fileId);
-        if (file) {
-          let fileName = sanitizeFileName(`${file.name}${file.extension}`);
-          
-          let counter = 1;
-          while (usedNames.has(fileName)) {
-            const nameWithoutExt = file.name;
-            const ext = file.extension;
-            fileName = sanitizeFileName(`${nameWithoutExt}_${counter}${ext}`);
-            counter++;
-          }
-          
-          usedNames.add(fileName);
-          const fileHandle = await directoryHandle.getFileHandle(fileName, { create: true });
-          const writable = await fileHandle.createWritable();
-          await writable.write(data);
-          await writable.close();
+    await axios.post(`${config.proxyUrl}/api/download-and-save`, {
+      fileUrl,
+      filePath: sanitizeFileName(filePath),
+      cookies,
+      saveMode,
+      username,
+    }, {
+      timeout: 300000,
+      onUploadProgress: (progressEvent) => {
+        if (onProgress && progressEvent.total) {
+          const progress = (progressEvent.loaded / progressEvent.total) * 100;
+          onProgress(progress);
         }
-      }
-    } else {
-      await saveFolderStructure(rootFolder, files, directoryHandle);
-    }
+      },
+    });
   } catch (error) {
-    if ((error as Error).message.includes('User activation')) {
-      throw new Error('Требуется разрешение на запись. Пожалуйста, выберите папку снова и нажмите "Сохранить".');
-    }
+    console.error('Error downloading and saving file on server:', error);
     throw error;
   }
 }
-
-
-function findFileById(folder: Folder, fileId: string): File | null {
-  for (const file of folder.files) {
-    if (file.id === fileId) return file;
-  }
-  for (const subFolder of folder.folders) {
-    const found = findFileById(subFolder, fileId);
-    if (found) return found;
-  }
-  return null;
-}
-
-async function saveFolderStructure(
-  folder: Folder,
-  files: Map<string, ArrayBuffer>,
-  parentHandle: FileSystemDirectoryHandle
-): Promise<void> {
-  const folderHandle = await parentHandle.getDirectoryHandle(
-    sanitizeFileName(folder.name),
-    { create: true }
-  );
-
-  for (const file of folder.files) {
-    const fileData = files.get(file.id);
-    if (fileData) {
-      const fileName = sanitizeFileName(`${file.name}${file.extension}`);
-      const fileHandle = await folderHandle.getFileHandle(fileName, { create: true });
-      const writable = await fileHandle.createWritable();
-      await writable.write(fileData);
-      await writable.close();
-    }
-  }
-
-  for (const subFolder of folder.folders) {
-    await saveFolderStructure(subFolder, files, folderHandle);
-  }
-}
-

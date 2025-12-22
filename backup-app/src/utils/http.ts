@@ -26,6 +26,8 @@ export async function fetchPageWithCookies(
   const response = await axios.post(`${config.proxyUrl}/api/fetch`, {
     url,
     cookies,
+  }, {
+    timeout: 120000,
   });
   return {
     html: response.data.html || response.data,
@@ -43,6 +45,7 @@ export async function downloadFileBuffer(
     { url, cookies },
     {
       responseType: 'arraybuffer',
+      timeout: 300000,
       onDownloadProgress: (progressEvent) => {
         if (onProgress && progressEvent.total) {
           onProgress(progressEvent.loaded, progressEvent.total);

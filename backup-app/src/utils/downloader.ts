@@ -2,7 +2,7 @@ import { downloadFileBuffer, fetchPage } from './http';
 import * as cheerio from 'cheerio';
 import type { File } from '../types';
 
-async function extractDownloadUrlFromFilePage(fileUrl: string, cookies: Record<string, string>): Promise<string | null> {
+export async function extractDownloadUrlFromFilePage(fileUrl: string, cookies: Record<string, string>): Promise<string | null> {
   try {
     const html = await fetchPage(fileUrl, cookies);
     const $ = cheerio.load(html);

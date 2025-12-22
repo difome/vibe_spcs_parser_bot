@@ -1,13 +1,12 @@
 import { useState, useCallback, useEffect } from 'react';
 import { scanFolder, collectAllFiles } from './utils/scanner';
-import { downloadFile } from './utils/downloader';
-import { selectDirectory, saveFilesToDirectory } from './utils/fileSaver';
+import { downloadAndSaveFileOnServer } from './utils/fileSaver';
 import { extractUsername, checkIsCurrentUser, parseUserSections, extractAvatarUrl } from './utils/parser';
 import { parseCookies, createCookiesFromSid, mergeCookies } from './utils/cookies';
 import { fetchPageWithCookies } from './utils/http';
 import { extractCKFromUrl, addCKToUrl } from './utils/url';
 import { config } from './config';
-import { saveCookies, loadCookies, saveUser, loadUser } from './utils/storage';
+import { saveCookies, loadCookies, saveUser, loadUser, clearCookies } from './utils/storage';
 import { ProgressBar } from './components/ProgressBar';
 import { formatBytes } from './utils/formatters';
 import { isNewYearPeriod } from './utils/date';
@@ -38,39 +37,38 @@ function App() {
     downloadedSize: 0,
       status: 'idle',
       fileProgress: new Map(),
-      directoryHandle: null,
       errors: [],
-  });
+    });
 
   useEffect(() => {
-    const savedCookies = loadCookies();
-    const savedUser = loadUser();
-    if (savedCookies) {
-      try {
-        const parsed = JSON.parse(savedCookies);
-        if (parsed.sid) {
-          setSid(parsed.sid);
-          setFullCookies(parsed);
-          if (savedUser) {
-            setState(prev => ({ ...prev, user: savedUser }));
-            loadUserData();
+    if (sid.trim() === '' && Object.keys(fullCookies).length === 0) {
+      const savedCookies = loadCookies();
+      const savedUser = loadUser();
+      if (savedCookies) {
+        try {
+          const parsed = JSON.parse(savedCookies);
+          if (parsed.sid) {
+            setSid(parsed.sid);
+            setFullCookies(parsed);
+            if (savedUser) {
+              setState(prev => ({ ...prev, user: savedUser }));
+            }
+          }
+        } catch {
+          const parsed = parseCookies(savedCookies);
+          if (parsed.sid) {
+            setSid(parsed.sid);
+            setFullCookies(parsed);
+            if (savedUser) {
+              setState(prev => ({ ...prev, user: savedUser }));
+            }
           }
         }
-      } catch {
-        const parsed = parseCookies(savedCookies);
-        if (parsed.sid) {
-          setSid(parsed.sid);
-          setFullCookies(parsed);
-          if (savedUser) {
-            setState(prev => ({ ...prev, user: savedUser }));
-            loadUserData();
-          }
-        }
+      } else if (savedUser && !state.user) {
+        setState(prev => ({ ...prev, user: savedUser }));
       }
-    } else if (savedUser) {
-      setState(prev => ({ ...prev, user: savedUser }));
     }
-  }, []);
+  }, [sid, fullCookies, state.user]);
 
   const loadUserData = useCallback(async () => {
     const sidToUse = sid.trim();
@@ -174,6 +172,7 @@ function App() {
   }, [sid, fullCookies]);
 
   const handleLogout = useCallback(() => {
+    clearCookies();
     setSid('');
     setFullCookies({});
     setState({
@@ -192,7 +191,6 @@ function App() {
       downloadedSize: 0,
       status: 'idle',
       fileProgress: new Map(),
-      directoryHandle: null,
       errors: [],
     });
   }, []);
@@ -292,24 +290,22 @@ function App() {
       ...prev,
       scannedFiles: [],
       fileProgress: new Map(),
+      totalFiles: 0,
       downloadedFiles: 0,
       downloadedSize: 0,
+      totalSize: 0,
       errors: [],
       rootFolder: null,
       currentPage: 1,
+      status: 'idle',
     }));
   }, []);
 
   const downloadSingleFile = useCallback(async (
     file: File,
-    cookiesObj: Record<string, string>,
-    filesMap: Map<string, ArrayBuffer>,
-    directoryHandle: FileSystemDirectoryHandle | null,
-    saveImmediately: boolean = false
+    cookiesObj: Record<string, string>
   ): Promise<void> => {
-    const startTime = Date.now();
-    let lastLoaded = 0;
-    let lastTime = startTime;
+    if (!state.user) return;
 
     setState(prev => {
       const newProgress = new Map(prev.fileProgress);
@@ -326,42 +322,26 @@ function App() {
     });
 
     try {
-      const data = await downloadFile(file, cookiesObj, (loaded, total) => {
-        const now = Date.now();
-        const timeDiff = (now - lastTime) / 1000;
-        const loadedDiff = loaded - lastLoaded;
-        
-        if (timeDiff > 0.1) {
-          const speed = loadedDiff / timeDiff;
-          lastLoaded = loaded;
-          lastTime = now;
-
+      await downloadAndSaveFileOnServer(
+        file,
+        cookiesObj,
+        state.user.username,
+        state.saveMode,
+        (progressPercent) => {
           setState(prev => {
             const newProgress = new Map(prev.fileProgress);
             const progress = newProgress.get(file.id);
             if (progress) {
               newProgress.set(file.id, {
                 ...progress,
-                progress: total > 0 ? (loaded / total) * 100 : 0,
-                speed,
+                progress: progressPercent,
+                speed: 0,
               });
             }
             return { ...prev, fileProgress: newProgress };
           });
         }
-      });
-
-      filesMap.set(file.id, data);
-
-      if (saveImmediately && directoryHandle && state.rootFolder) {
-        try {
-          const singleFileMap = new Map<string, ArrayBuffer>();
-          singleFileMap.set(file.id, data);
-          await saveFilesToDirectory(state.rootFolder, singleFileMap, directoryHandle, state.saveMode);
-        } catch (error) {
-          console.error('Error saving file immediately:', error);
-        }
-      }
+      );
 
       setState(prev => {
         const newProgress = new Map(prev.fileProgress);
@@ -378,7 +358,6 @@ function App() {
           ...prev,
           fileProgress: newProgress,
           downloadedFiles: prev.downloadedFiles + 1,
-          downloadedSize: prev.downloadedSize + data.byteLength,
         };
       });
     } catch (error) {
@@ -400,49 +379,25 @@ function App() {
       });
       throw error;
     }
-  }, [state.rootFolder, state.saveMode]);
+  }, [state.user, state.saveMode]);
 
   const handleDownload = useCallback(async () => {
-    if (state.scannedFiles.length === 0) return;
-
-    let directoryHandle = state.directoryHandle;
-    
-    if (!directoryHandle) {
-      directoryHandle = await selectDirectory();
-      if (!directoryHandle) {
-        alert('Не выбрана папка для сохранения');
-        return;
-      }
-      
-      if ('requestPermission' in directoryHandle) {
-        try {
-          const permission = await (directoryHandle as any).requestPermission({ mode: 'readwrite' });
-          if (permission !== 'granted') {
-            alert('Требуется разрешение на запись в выбранную папку');
-            return;
-          }
-        } catch (error) {
-          console.error('Permission request error:', error);
-          alert('Ошибка при запросе разрешения');
-          return;
-        }
-      }
-      
-      setState(prev => ({ ...prev, directoryHandle }));
-    }
+    if (state.scannedFiles.length === 0 || !state.user) return;
 
     try {
       const cookiesObj = fullCookies.sid ? fullCookies : createCookiesFromSid(sid);
       setState(prev => ({ ...prev, status: 'downloading' }));
-
-      const filesMap = new Map<string, ArrayBuffer>();
 
       for (const file of state.scannedFiles) {
         const progress = state.fileProgress.get(file.id);
         if (progress?.status === 'completed') {
           continue;
         }
-        await downloadSingleFile(file, cookiesObj, filesMap, directoryHandle, true);
+        try {
+          await downloadSingleFile(file, cookiesObj);
+        } catch (error) {
+          console.error('Error downloading file:', error);
+        }
       }
 
       setState(prev => ({ ...prev, status: 'completed' }));
@@ -454,7 +409,7 @@ function App() {
         errors: [...prev.errors, { file: 'General', error: errorMsg }],
       }));
     }
-  }, [sid, fullCookies, state.scannedFiles, state.rootFolder, state.saveMode, state.fileProgress, downloadSingleFile]);
+  }, [sid, fullCookies, state.scannedFiles, state.user, downloadSingleFile]);
 
   const canScan = state.user && state.selectedSections.length > 0 && state.status === 'idle';
   const canDownload = state.scannedFiles.length > 0 && state.status === 'idle';
@@ -595,12 +550,11 @@ function App() {
                 onPageChange={(page) => setState(prev => ({ ...prev, currentPage: page }))}
                 onRetryFile={(fileId) => {
                   const file = state.scannedFiles.find(f => f.id === fileId);
-                  if (!file || !state.directoryHandle) return;
+                  if (!file || !state.user) return;
                   
                   const cookiesObj = fullCookies.sid ? fullCookies : createCookiesFromSid(sid);
-                  const filesMap = new Map<string, ArrayBuffer>();
                   
-                  downloadSingleFile(file, cookiesObj, filesMap, state.directoryHandle, true).catch(() => {
+                  downloadSingleFile(file, cookiesObj).catch(() => {
                     // Error already handled in downloadSingleFile
                   });
                 }}

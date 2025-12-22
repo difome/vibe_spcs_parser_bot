@@ -1,12 +1,23 @@
 import express from 'express';
 import cors from 'cors';
 import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = 3001;
+const DOWNLOADS_DIR = path.join(__dirname, 'downloads');
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '100mb' }));
+
+if (!fs.existsSync(DOWNLOADS_DIR)) {
+  fs.mkdirSync(DOWNLOADS_DIR, { recursive: true });
+}
 
 app.post('/api/fetch', async (req, res) => {
   try {
@@ -34,7 +45,7 @@ app.post('/api/fetch', async (req, res) => {
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
       },
-      timeout: 30000,
+      timeout: 120000,
     });
     
     const setCookieHeaders = response.headers['set-cookie'] || [];
@@ -87,7 +98,7 @@ app.post('/api/download', async (req, res) => {
         'Sec-Fetch-Site': 'same-origin',
       },
       responseType: 'arraybuffer',
-      timeout: 60000,
+      timeout: 300000,
     });
     
     res.set({
@@ -101,7 +112,88 @@ app.post('/api/download', async (req, res) => {
   }
 });
 
+app.post('/api/download-and-save', async (req, res) => {
+  try {
+    const { fileUrl, filePath, cookies, saveMode, username } = req.body;
+    
+    if (!fileUrl || !filePath) {
+      return res.status(400).json({ error: 'fileUrl and filePath are required' });
+    }
+    
+    const cookieString = typeof cookies === 'string' 
+      ? cookies 
+      : Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ');
+    
+    const downloadResponse = await axios.get(fileUrl, {
+      headers: {
+        'Cookie': cookieString,
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0',
+        'Accept': '*/*',
+        'Accept-Language': 'en-US,en;q=0.9,uk;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br, zstd',
+        'Referer': fileUrl.includes('spaces.im') ? 'https://spaces.im/' : fileUrl,
+        'Sec-Ch-Ua': '"Microsoft Edge";v="143", "Chromium";v="143", "Not A(Brand";v="24"',
+        'Sec-Ch-Ua-Mobile': '?0',
+        'Sec-Ch-Ua-Platform': '"Linux"',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-origin',
+      },
+      responseType: 'arraybuffer',
+      timeout: 300000,
+    });
+    
+    const baseDir = path.join(DOWNLOADS_DIR, username || 'default');
+    const fullPath = saveMode === 'flat' 
+      ? path.join(baseDir, path.basename(filePath))
+      : path.join(baseDir, filePath);
+    
+    const dir = path.dirname(fullPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    
+    fs.writeFileSync(fullPath, Buffer.from(downloadResponse.data));
+    
+    res.json({ 
+      success: true, 
+      path: fullPath,
+      size: downloadResponse.data.byteLength,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/save-file', async (req, res) => {
+  try {
+    const { filePath, fileData, saveMode, username } = req.body;
+    
+    if (!filePath || !fileData) {
+      return res.status(400).json({ error: 'filePath and fileData are required' });
+    }
+    
+    const baseDir = path.join(DOWNLOADS_DIR, username || 'default');
+    const fullPath = saveMode === 'flat' 
+      ? path.join(baseDir, path.basename(filePath))
+      : path.join(baseDir, filePath);
+    
+    const dir = path.dirname(fullPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    
+    const buffer = Buffer.from(fileData, 'base64');
+    fs.writeFileSync(fullPath, buffer);
+    
+    res.json({ success: true, path: fullPath });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Proxy server running on http://localhost:${PORT}`);
+  console.log(`Downloads directory: ${DOWNLOADS_DIR}`);
 });
 
