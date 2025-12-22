@@ -264,13 +264,18 @@ const canLoad = computed(() => authStore.sid.trim() && !authStore.user && backup
 
 const displaySid = computed({
   get: () => {
+    // Показываем звездочки только если пользователь авторизован
     if (authStore.user && authStore.sid.trim()) {
       return '*'.repeat(Math.min(authStore.sid.length, 50))
     }
+    // Если пользователь не авторизован, показываем реальное значение SID
     return authStore.sid
   },
   set: (value: string) => {
-    authStore.sid = value
+    // Разрешаем редактирование только если пользователь не авторизован
+    if (!authStore.user) {
+      authStore.sid = value
+    }
   },
 })
 
