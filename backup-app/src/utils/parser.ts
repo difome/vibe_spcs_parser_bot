@@ -7,30 +7,55 @@ export function extractUsername(url: string, html: string): string {
   
   const $ = cheerio.load(html);
   
+  const userLinkWithAvatar = $('td.table__cell.relative a.horiz-menu__link, .horiz-menu td.table__cell.relative a.horiz-menu__link').filter((_, el) => {
+    return $(el).find('.horiz-menu__link-ico_user').length > 0;
+  });
+  
+  if (userLinkWithAvatar.length > 0) {
+    const href = userLinkWithAvatar.attr('href') || '';
+    const match = href.match(/\/mysite\/index\/([^\/]+)/);
+    if (match) {
+      console.log('Found username from avatar link:', match[1]);
+      return match[1];
+    }
+  }
+  
   const userLink = $('a.horiz-menu__link').filter((_, el) => {
-    return $(el).find('.horiz-menu__link-text_user').text().trim() === 'Вы';
+    return $(el).find('.horiz-menu__link-text_user').text().trim() === 'Вы' || 
+           $(el).find('.sr-only').text().trim() === 'Вы' ||
+           $(el).find('.horiz-menu__link-ico_user').length > 0;
   });
   
   if (userLink.length > 0) {
     const href = userLink.attr('href') || '';
     const match = href.match(/\/mysite\/index\/([^\/]+)/);
-    if (match) return match[1];
+    if (match) {
+      console.log('Found username from user link:', match[1]);
+      return match[1];
+    }
   }
   
   const nickLink = $('a.mysite-link');
   if (nickLink.length > 0) {
     const nick = nickLink.find('.mysite-nick').text().trim();
-    if (nick) return nick;
+    if (nick) {
+      console.log('Found username from mysite-link:', nick);
+      return nick;
+    }
   }
   
   const playerParams = $('#player_params').attr('data-params');
   if (playerParams) {
     try {
       const params = JSON.parse(playerParams);
-      if (params.user) return params.user;
+      if (params.user) {
+        console.log('Found username from player_params:', params.user);
+        return params.user;
+      }
     } catch {}
   }
   
+  console.log('Username not found');
   return '';
 }
 
@@ -43,26 +68,38 @@ export function checkIsCurrentUser(html: string): boolean {
 export function extractAvatarUrl(html: string): string | undefined {
   const $ = cheerio.load(html);
   
-  let avatarImg = $('.user__ava.user__ava_big img, .user__ava img').first();
+  let avatarImg = $('.horiz-menu td.table__cell.relative a.horiz-menu__link .horiz-menu__link-ico_user img').first();
   if (avatarImg.length === 0) {
-    avatarImg = $('.change_avatar_link img').first();
+    avatarImg = $('td.table__cell.relative a.horiz-menu__link .horiz-menu__link-ico_user img').first();
+  }
+  if (avatarImg.length === 0) {
+    avatarImg = $('a.horiz-menu__link .horiz-menu__link-ico_user img').first();
   }
   if (avatarImg.length === 0) {
     avatarImg = $('.horiz-menu__link-ico_user img').first();
+  }
+  if (avatarImg.length === 0) {
+    avatarImg = $('.user__ava.user__ava_big img, .user__ava img').first();
+  }
+  if (avatarImg.length === 0) {
+    avatarImg = $('.change_avatar_link img').first();
   }
   
   const avatarUrl = avatarImg.attr('src');
   
   if (avatarUrl) {
     const fullUrl = avatarUrl.startsWith('http') ? avatarUrl : `https:${avatarUrl}`;
-    console.log('Found avatar URL:', fullUrl, 'from selector:', avatarImg.length > 0 ? 'user__ava' : 'horiz-menu');
+    console.log('Found avatar URL:', fullUrl);
     return fullUrl;
   }
   
   console.log('Avatar not found in HTML. Available selectors:', {
+    horizMenuTable: $('.horiz-menu td.table__cell.relative a.horiz-menu__link .horiz-menu__link-ico_user img').length,
+    tableCellRelative: $('td.table__cell.relative a.horiz-menu__link .horiz-menu__link-ico_user img').length,
+    horizMenuLink: $('a.horiz-menu__link .horiz-menu__link-ico_user img').length,
+    horizMenu: $('.horiz-menu__link-ico_user img').length,
     userAva: $('.user__ava img').length,
     changeAvatarLink: $('.change_avatar_link img').length,
-    horizMenu: $('.horiz-menu__link-ico_user img').length,
   });
   return undefined;
 }
@@ -82,67 +119,48 @@ export function parseUserSections(html: string, username: string, baseUrl: strin
   
   const foundSections = new Set<string>();
   
-  $('a.list-link-darkblue').each((_, elem) => {
-    const $elem = $(elem);
-    const href = $elem.attr('href') || '';
-    
-    for (const [key, info] of Object.entries(sectionMap)) {
-      if (href.includes(`/${key}/user/${username}/`) && !foundSections.has(key)) {
-        let count = 0;
-        
-        const countElem = $elem.find('.cnt');
-        if (countElem.length > 0) {
-          const countText = countElem.text().trim();
-          count = parseInt(countText) || 0;
-          console.log(`Found count from .cnt: ${countText} -> ${count}`);
-        } else {
-          const fullText = $elem.text();
-          const countMatch = fullText.match(/(\d+)/);
-          if (countMatch) {
-            count = parseInt(countMatch[1]) || 0;
-            console.log(`Found count from text: ${fullText} -> ${count}`);
-          }
-        }
-        
-        console.log(`✓ Found section: ${key}`, { href, count, html: $elem.html() });
-        foundSections.add(key);
-        sections.push({
-          id: key,
-          name: info.name,
-          folderName: info.folderName,
-          url: href.startsWith('http') ? href : `${baseUrl}${href}`,
-          icon: info.icon,
-          count,
-          type: info.type,
-        });
-        break;
-      }
-    }
-  });
-  
-  if (sections.length === 0) {
-    console.log('No sections found with list-link-darkblue, trying all links...');
-    $('a').each((_, elem) => {
+  const findSectionsInLinks = (selector: string, useUsername: boolean) => {
+    $(selector).each((_, elem) => {
       const $elem = $(elem);
       const href = $elem.attr('href') || '';
       
       for (const [key, info] of Object.entries(sectionMap)) {
-        if (href.includes(`/${key}/user/${username}/`) && !foundSections.has(key)) {
+        const matchesPattern = useUsername 
+          ? href.includes(`/${key}/user/${username}/`)
+          : (href.includes(`/${key}/user/`) || href.includes(`/${key}/list/`));
+        
+        if (matchesPattern && !foundSections.has(key)) {
           let count = 0;
           
           const countElem = $elem.find('.cnt');
           if (countElem.length > 0) {
             const countText = countElem.text().trim();
             count = parseInt(countText) || 0;
+            console.log(`Found count from .cnt: ${countText} -> ${count}`);
+          } else {
+            const fullText = $elem.text();
+            const countMatch = fullText.match(/(\d+)/);
+            if (countMatch) {
+              count = parseInt(countMatch[1]) || 0;
+              console.log(`Found count from text: ${fullText} -> ${count}`);
+            }
           }
           
-          console.log(`✓ Found section (fallback): ${key}`, { href, count });
+          let sectionUrl = href.startsWith('http') ? href : `${baseUrl}${href}`;
+          if (!useUsername && username) {
+            const urlMatch = sectionUrl.match(/\/(pictures|music|video|files)\/user\/([^\/]+)\//);
+            if (urlMatch && urlMatch[2] !== username) {
+              sectionUrl = sectionUrl.replace(`/user/${urlMatch[2]}/`, `/user/${username}/`);
+            }
+          }
+          
+          console.log(`✓ Found section: ${key}`, { href, sectionUrl, count });
           foundSections.add(key);
           sections.push({
             id: key,
             name: info.name,
             folderName: info.folderName,
-            url: href.startsWith('http') ? href : `${baseUrl}${href}`,
+            url: sectionUrl,
             icon: info.icon,
             count,
             type: info.type,
@@ -151,6 +169,15 @@ export function parseUserSections(html: string, username: string, baseUrl: strin
         }
       }
     });
+  };
+  
+  if (username) {
+    findSectionsInLinks('a.list-link-darkblue', true);
+  }
+  
+  if (sections.length === 0) {
+    console.log('No sections found with list-link-darkblue, trying all links...');
+    findSectionsInLinks('a', username ? true : false);
   }
   
   console.log('Final sections:', sections);
@@ -237,7 +264,27 @@ export function parseFiles(html: string): File[] {
           extension = parts[2];
         } else {
           name = fullName;
-          extension = '.jpg';
+          if (type === 25) {
+            extension = '.mp4';
+          } else {
+            extension = '.jpg';
+          }
+        }
+      } else {
+        const imgAlt = $elem.find('img').attr('alt') || $elem.find('img').attr('aria-label');
+        if (imgAlt) {
+          const parts = imgAlt.match(/^(.+?)(\.[^.]+)$/);
+          if (parts) {
+            name = parts[1];
+            extension = parts[2];
+          } else {
+            name = imgAlt;
+            if (type === 25) {
+              extension = '.mp4';
+            } else {
+              extension = '.jpg';
+            }
+          }
         }
       }
     } else {
@@ -302,40 +349,29 @@ export function parseFiles(html: string): File[] {
     const playerElem = $elem.find('.player_item');
     const directUrl = playerElem.attr('data-src');
     
-    if (!name && isTiledItem) {
-      const imgAlt = $elem.find('img').attr('alt') || $elem.find('img').attr('aria-label');
-      if (imgAlt) {
-        const parts = imgAlt.match(/^(.+?)(\.[^.]+)$/);
-        if (parts) {
-          name = parts[1];
-          extension = parts[2];
-        } else {
-          name = imgAlt;
-          extension = '.jpg';
-        }
-      }
-    }
     
     if (id && name) {
-      if (!downloadLink && viewLink) {
-        downloadLink = viewLink.startsWith('http') ? viewLink : `https://spaces.im${viewLink}`;
-        console.log(`File ${name}${extension} (id: ${id}, type: ${type}) has view link, will fetch download URL from page`);
-      } else if (!downloadLink) {
-        if (type === 7) {
-          downloadLink = `https://spaces.im/pictures/view/${id}/`;
-        } else if (type === 6) {
-          downloadLink = `https://spaces.im/music/view/${id}/`;
-        } else if (type === 5) {
-          downloadLink = `https://spaces.im/files/view/${id}/`;
-        } else {
-          downloadLink = `https://spaces.im/files/view/${id}/`;
-        }
-        console.log(`Warning: File ${name}${extension} (id: ${id}, type: ${type}) has no download link, will fetch from page`);
+    if (!downloadLink && viewLink) {
+      downloadLink = viewLink.startsWith('http') ? viewLink : `https://spaces.im${viewLink}`;
+      console.log(`File ${name}${extension} (id: ${id}, type: ${type}) has view link, will fetch download URL from page`);
+    } else if (!downloadLink) {
+      if (type === 7) {
+        downloadLink = `https://spaces.im/pictures/view/${id}/`;
+      } else if (type === 6) {
+        downloadLink = `https://spaces.im/music/view/${id}/`;
+      } else if (type === 25) {
+        downloadLink = `https://spaces.im/video/view/${id}/`;
+      } else if (type === 5) {
+        downloadLink = `https://spaces.im/files/view/${id}/`;
       } else {
-        downloadLink = downloadLink.startsWith('http') 
-          ? downloadLink 
-          : `https://spaces.im${downloadLink}`;
+        downloadLink = `https://spaces.im/files/view/${id}/`;
       }
+      console.log(`Warning: File ${name}${extension} (id: ${id}, type: ${type}) has no download link, will fetch from page`);
+    } else {
+      downloadLink = downloadLink.startsWith('http') 
+        ? downloadLink 
+        : `https://spaces.im${downloadLink}`;
+    }
       
       console.log(`Found file: ${name}${extension} (id: ${id}, type: ${type}, downloadLink: ${downloadLink})`);
       files.push({

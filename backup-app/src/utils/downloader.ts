@@ -36,6 +36,15 @@ async function extractDownloadUrlFromFilePage(fileUrl: string, cookies: Record<s
     if (!downloadLink) {
       downloadLink = $('a[href*="/files/download/"]').first().attr('href');
     }
+    if (!downloadLink) {
+      downloadLink = $('a[href*="/pictures/download/"]').first().attr('href');
+    }
+    if (!downloadLink) {
+      downloadLink = $('a[href*="/music/download/"]').first().attr('href');
+    }
+    if (!downloadLink) {
+      downloadLink = $('a[href*="/video/download/"]').first().attr('href');
+    }
     
     if (downloadLink) {
       const fullUrl = downloadLink.startsWith('http') ? downloadLink : `https://spaces.im${downloadLink}`;
@@ -68,6 +77,8 @@ export async function downloadFile(
         viewUrl = `https://spaces.im/pictures/view/${file.id}/`;
       } else if (file.type === 6) {
         viewUrl = `https://spaces.im/music/view/${file.id}/`;
+      } else if (file.type === 25) {
+        viewUrl = `https://spaces.im/video/view/${file.id}/`;
       } else if (file.type === 5) {
         viewUrl = `https://spaces.im/files/view/${file.id}/`;
       } else {
@@ -85,6 +96,10 @@ export async function downloadFile(
         url = `https://spaces.im/pictures/download/${file.id}/`;
       } else if (file.type === 6) {
         url = `https://spaces.im/music/download/${file.id}/`;
+      } else if (file.type === 25) {
+        url = `https://spaces.im/video/download/${file.id}/`;
+      } else if (file.type === 5) {
+        url = `https://spaces.im/files/download/${file.id}/`;
       } else {
         url = `https://spaces.im/files/download/${file.id}/`;
       }

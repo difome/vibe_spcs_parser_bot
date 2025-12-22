@@ -49,9 +49,6 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
                 )}
               </div>
               <h3 className="text-white font-semibold text-lg">{user.username}</h3>
-              <p className="text-gray-400 text-sm mt-1">
-                {user.isCurrentUser ? 'Ваш аккаунт' : 'Другой пользователь'}
-              </p>
             </div>
             
             <button

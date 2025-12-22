@@ -95,7 +95,7 @@ function App() {
       
       const deviceTypeMatch = html.match(/href="([^"]*device_type[^"]*)"/);
       const deviceTypeUrl = deviceTypeMatch ? deviceTypeMatch[1] : '';
-      const ck = extractCKFromUrl(deviceTypeUrl) || extractCKFromUrl(config.baseUrl);
+      let ck = extractCKFromUrl(deviceTypeUrl) || extractCKFromUrl(config.baseUrl);
       
       console.log('Extracted username from main:', username);
       console.log('Is current user:', isCurrentUser);
@@ -103,6 +103,23 @@ function App() {
       console.log('Cookies from response:', response.cookies);
       
       let avatarUrl: string | undefined;
+      let sectionsHtml = html;
+      
+      if (!username && response.cookies.user_id) {
+        console.log('Username not found, trying to load profile by user_id:', response.cookies.user_id);
+        try {
+          const profileUrl = `${config.baseUrl}/mysite/index/`;
+          const profileResponse = await fetchPageWithCookies(profileUrl, currentCookies);
+          const profileCookies = mergeCookies(currentCookies, profileResponse.cookies);
+          currentCookies = profileCookies;
+          setFullCookies(currentCookies);
+          username = extractUsername(profileUrl, profileResponse.html);
+          sectionsHtml = profileResponse.html;
+          console.log('Found username from profile page:', username);
+        } catch (e) {
+          console.log('Failed to load profile page:', e);
+        }
+      }
       
       if (username) {
         let profileUrl = `${config.baseUrl}/mysite/index/${username}/`;
@@ -111,22 +128,27 @@ function App() {
         }
         try {
           const profileResponse = await fetchPageWithCookies(profileUrl, currentCookies);
-          html = profileResponse.html;
+          sectionsHtml = profileResponse.html;
           const profileCookies = mergeCookies(currentCookies, profileResponse.cookies);
           currentCookies = profileCookies;
           setFullCookies(currentCookies);
           console.log('Loaded profile page:', profileUrl);
-          avatarUrl = extractAvatarUrl(html);
+          avatarUrl = extractAvatarUrl(profileResponse.html);
           console.log('Avatar URL from profile page:', avatarUrl);
+          
+          if (!username) {
+            username = extractUsername(profileUrl, profileResponse.html);
+            console.log('Extracted username from profile page:', username);
+          }
         } catch (e) {
-          console.log('Failed to load profile, trying main page for avatar');
+          console.log('Failed to load profile, using main page');
           avatarUrl = extractAvatarUrl(html);
         }
       } else {
         avatarUrl = extractAvatarUrl(html);
       }
       
-      const sections = parseUserSections(html, username, config.baseUrl);
+      const sections = parseUserSections(sectionsHtml, username, config.baseUrl);
       
       console.log('Parsed sections:', sections);
       
