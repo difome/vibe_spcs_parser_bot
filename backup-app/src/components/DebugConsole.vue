@@ -259,12 +259,19 @@ watch(
   }
 )
 
-onMounted(() => {
-  if (isDragging.value || isResizing.value) {
-    window.addEventListener('mousemove', handleMouseMove)
-    window.addEventListener('mouseup', handleMouseUp)
-  }
-})
+watch(
+  [() => isDragging.value, () => isResizing.value],
+  ([dragging, resizing]) => {
+    if (dragging || resizing) {
+      window.addEventListener('mousemove', handleMouseMove)
+      window.addEventListener('mouseup', handleMouseUp)
+    } else {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  },
+  { immediate: true }
+)
 
 onUnmounted(() => {
   window.removeEventListener('mousemove', handleMouseMove)

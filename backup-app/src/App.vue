@@ -52,10 +52,8 @@
                 <div>
                   <label class="block text-sm font-medium text-gray-300 mb-2"> SID </label>
                   <input
-                    v-model="authStore.sid"
+                    v-model="displaySid"
                     type="text"
-                    :value="authStore.user && authStore.sid.trim() ? '*'.repeat(Math.min(authStore.sid.length, 50)) : authStore.sid"
-                    @input="handleSidInput"
                     placeholder="Введите значение cookie sid"
                     :disabled="backupStore.inProgress || !!authStore.user"
                     class="w-full px-4 py-2 bg-dark-hover border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 font-mono text-sm"
@@ -216,14 +214,21 @@ const newYearStyle = {
 
 const canLoad = computed(() => authStore.sid.trim() && !authStore.user && backupStore.status === 'idle')
 
+const displaySid = computed({
+  get: () => {
+    if (authStore.user && authStore.sid.trim()) {
+      return '*'.repeat(Math.min(authStore.sid.length, 50))
+    }
+    return authStore.sid
+  },
+  set: (value: string) => {
+    authStore.sid = value
+  },
+})
+
 function handleLogout() {
   authStore.logout()
   backupStore.resetScan()
-}
-
-function handleSidInput(e: Event) {
-  const target = e.target as HTMLInputElement
-  authStore.sid = target.value
 }
 
 onMounted(() => {
