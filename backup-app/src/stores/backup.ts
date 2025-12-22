@@ -4,7 +4,7 @@ import type { File, Folder, BackupStatus, SaveMode, FileDownloadProgress } from 
 import { scanFolder, collectAllFiles } from '@/utils/scanner'
 import { downloadAndSaveFileOnServer } from '@/utils/fileSaver'
 import { createCookiesFromSid } from '@/utils/cookies'
-import { useAuthStore } from './auth'
+import { useAuthStore } from '@/stores/auth'
 
 export const useBackupStore = defineStore('backup', () => {
   const authStore = useAuthStore()

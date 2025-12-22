@@ -1,6 +1,6 @@
 import axios from 'axios';
-import { formatCookies } from './cookies';
-import { config } from '../config';
+import { formatCookies } from '@/utils/cookies';
+import { config } from '@/config';
 
 export interface FetchResponse {
   html: string;

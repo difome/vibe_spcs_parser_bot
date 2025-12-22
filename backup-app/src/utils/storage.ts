@@ -1,4 +1,4 @@
-import type { UserSection } from '../types';
+import type { UserSection } from '@/types';
 
 const COOKIES_KEY = 'spaces_backup_cookies';
 const USER_KEY = 'spaces_backup_user';

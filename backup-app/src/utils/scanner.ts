@@ -1,8 +1,8 @@
-import { fetchPageWithCookies } from './http';
-import { parseFolders, parseFiles, parsePagination, addPagination } from './parser';
-import { mergeCookies } from './cookies';
+import { fetchPageWithCookies } from '@/utils/http';
+import { parseFolders, parseFiles, parsePagination, addPagination } from '@/utils/parser';
+import { mergeCookies } from '@/utils/cookies';
 import * as cheerio from 'cheerio';
-import type { Folder, File } from '../types';
+import type { Folder, File } from '@/types';
 
 export async function scanFolder(
   url: string,

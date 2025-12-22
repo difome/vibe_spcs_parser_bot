@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
-import type { Folder } from '../types';
+import type { Folder } from '@/types';
 
 export async function createArchive(
   rootFolder: Folder,

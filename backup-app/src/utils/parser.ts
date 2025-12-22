@@ -1,6 +1,6 @@
 import * as cheerio from 'cheerio';
-import type { File, Folder, UserSection } from '../types';
-import { extractFileNameFromUrl } from './formatters';
+import type { File, Folder, UserSection } from '@/types';
+import { extractFileNameFromUrl } from '@/utils/formatters';
 
 export function extractUsername(url: string, html: string): string {
   const urlMatch = url.match(/\/files\/user\/([^\/]+)\//);
