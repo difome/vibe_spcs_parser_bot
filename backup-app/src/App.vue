@@ -231,7 +231,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useBackupStore } from '@/stores/backup'
 import { isNewYearPeriod } from '@/utils/date'
@@ -296,17 +296,4 @@ async function handleScanProfile() {
 onMounted(() => {
   authStore.loadSavedData()
 })
-
-watch(
-  () => authStore.sid,
-  () => {
-    if (authStore.sid.trim() && !authStore.isLoading) {
-      if (!authStore.user && backupStore.status !== 'loading') {
-        authStore.loadUserData()
-      } else if (authStore.user && authStore.sections.length === 0 && backupStore.status !== 'loading') {
-        authStore.loadUserData()
-      }
-    }
-  }
-)
 </script>
