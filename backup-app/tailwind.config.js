@@ -1,8 +1,8 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
+    './index.html',
+    './src/**/*.{js,ts,jsx,tsx,vue}',
   ],
   theme: {
     extend: {
@@ -12,8 +12,8 @@ export default {
           surface: '#141414',
           border: '#1f1f1f',
           hover: '#1a1a1a',
-        }
-      }
+        },
+      },
     },
   },
   plugins: [],
