@@ -1,10 +1,22 @@
 import * as cheerio from 'cheerio';
-import type { File, Folder, UserSection } from '../types';
-import { extractFileNameFromUrl } from './formatters';
+import type { File, Folder, UserSection } from '@/types';
+import { extractFileNameFromUrl } from '@/utils/formatters';
+
+export function extractUsernameFromProfileUrl(url: string): string | null {
+  // Извлекаем username из URL профиля: https://spaces.im/mysite/index/serega9199/...
+  const profileMatch = url.match(/\/mysite\/index\/([^\/\?]+)/);
+  if (profileMatch && profileMatch[1]) {
+    return profileMatch[1];
+  }
+  return null;
+}
 
 export function extractUsername(url: string, html: string): string {
   const urlMatch = url.match(/\/files\/user\/([^\/]+)\//);
-  if (urlMatch) return urlMatch[1];
+  if (urlMatch && urlMatch[1]) return urlMatch[1];
+  
+  const profileMatch = extractUsernameFromProfileUrl(url);
+  if (profileMatch) return profileMatch;
   
   const $ = cheerio.load(html);
   
@@ -15,7 +27,7 @@ export function extractUsername(url: string, html: string): string {
   if (userLinkWithAvatar.length > 0) {
     const href = userLinkWithAvatar.attr('href') || '';
     const match = href.match(/\/mysite\/index\/([^\/]+)/);
-    if (match) {
+    if (match && match[1]) {
       console.log('Found username from avatar link:', match[1]);
       return match[1];
     }
@@ -30,7 +42,7 @@ export function extractUsername(url: string, html: string): string {
   if (userLink.length > 0) {
     const href = userLink.attr('href') || '';
     const match = href.match(/\/mysite\/index\/([^\/]+)/);
-    if (match) {
+    if (match && match[1]) {
       console.log('Found username from user link:', match[1]);
       return match[1];
     }
@@ -141,7 +153,7 @@ export function parseUserSections(html: string, username: string, baseUrl: strin
           } else {
             const fullText = $elem.text();
             const countMatch = fullText.match(/(\d+)/);
-            if (countMatch) {
+            if (countMatch && countMatch[1]) {
               count = parseInt(countMatch[1]) || 0;
               console.log(`Found count from text: ${fullText} -> ${count}`);
             }
@@ -177,20 +189,43 @@ export function parseUserSections(html: string, username: string, baseUrl: strin
   }
   
   if (sections.length === 0) {
-    console.log('No sections found with list-link-darkblue, trying all links...');
+    console.log('No sections found with list-link-darkblue, trying other selectors...');
+    findSectionsInLinks('a.horiz-menu__link', true);
+    findSectionsInLinks('a.mysite-link', true);
+    findSectionsInLinks('a[href*="/pictures/"], a[href*="/music/"], a[href*="/video/"], a[href*="/files/"]', true);
+  }
+  
+  if (sections.length === 0) {
+    console.log('No sections found with specific selectors, trying all links...');
     findSectionsInLinks('a', username ? true : false);
+  }
+  
+  if (sections.length === 0 && username) {
+    console.log('No sections found in HTML, creating default sections from username...');
+    for (const [key, info] of Object.entries(sectionMap)) {
+      const sectionUrl = `${baseUrl}/${key}/user/${username}/list/-/`;
+      sections.push({
+        id: key,
+        name: info.name,
+        folderName: info.folderName,
+        url: sectionUrl,
+        icon: info.icon,
+        count: 0,
+        type: info.type,
+      });
+    }
   }
   
   console.log('Final sections:', sections);
   return sections;
 }
 
-export function parseFolders(html: string): Folder[] {
+export function parseFolders(html: string, skipPasswordProtected: boolean = false): Folder[] {
   const $ = cheerio.load(html);
   const folders: Folder[] = [];
   const processedIds = new Set<string>();
   
-  console.log('Parsing folders...');
+  console.log('Parsing folders...', { skipPasswordProtected });
   
   const folderSelectors = [
     'a.js-dir',
@@ -213,6 +248,22 @@ export function parseFolders(html: string): Folder[] {
         return;
       }
       
+      // Проверка на папку с паролем
+      if (skipPasswordProtected) {
+        const isPasswordProtected = 
+          $elem.find('.ico_lock, .lock-icon, [class*="lock"], [class*="password"]').length > 0 ||
+          $elem.text().toLowerCase().includes('защищено') ||
+          $elem.text().toLowerCase().includes('пароль') ||
+          $elem.attr('title')?.toLowerCase().includes('пароль') ||
+          $elem.attr('title')?.toLowerCase().includes('защищено') ||
+          $elem.closest('.js-dir').find('.ico_lock, .lock-icon').length > 0;
+        
+        if (isPasswordProtected) {
+          console.log(`Skipping password-protected folder: ${$elem.text().trim()}`);
+          return;
+        }
+      }
+      
       let name = $elem.find('.js-dir_name').text().trim();
       if (!name) {
         name = $elem.find('.list-link__name').text().trim();
@@ -221,12 +272,18 @@ export function parseFolders(html: string): Folder[] {
         name = $elem.find('b').first().text().trim();
       }
       if (!name) {
-        name = $elem.text().trim().split('\n')[0].trim();
+        const text = $elem.text();
+        if (text) {
+          const trimmed = text.trim().split('\n')[0]?.trim();
+          if (trimmed) {
+            name = trimmed;
+          }
+        }
       }
       
       const fileCountText = $elem.find('.grey').first().text().trim();
       const fileCountMatch = fileCountText.match(/(\d+)\s+файл/);
-      const fileCount = fileCountMatch ? parseInt(fileCountMatch[1]) : undefined;
+      const fileCount = fileCountMatch && fileCountMatch[1] ? parseInt(fileCountMatch[1]) : undefined;
       
       if (name && href.includes('/list/')) {
         processedIds.add(id);
@@ -278,7 +335,7 @@ export function parseFiles(html: string): File[] {
       if (nameElem.length > 0) {
         const fullName = nameElem.text().trim();
         const parts = fullName.match(/^(.+?)(\.[^.]+)$/);
-        if (parts) {
+        if (parts && parts[1] && parts[2]) {
           name = parts[1];
           extension = parts[2];
         } else {
@@ -293,7 +350,7 @@ export function parseFiles(html: string): File[] {
         const imgAlt = $elem.find('img').attr('alt') || $elem.find('img').attr('aria-label');
         if (imgAlt) {
           const parts = imgAlt.match(/^(.+?)(\.[^.]+)$/);
-          if (parts) {
+          if (parts && parts[1] && parts[2]) {
             name = parts[1];
             extension = parts[2];
           } else {
@@ -324,7 +381,7 @@ export function parseFiles(html: string): File[] {
           } else {
             const fullText = linkElem.text().trim();
             const parts = fullText.match(/^(.+?)(\.[^.]+)$/);
-            if (parts) {
+            if (parts && parts[1] && parts[2]) {
               name = parts[1];
               extension = parts[2];
             } else {
@@ -336,7 +393,7 @@ export function parseFiles(html: string): File[] {
           const textContent = $elem.find('b.darkblue, b.break-word').first().text().trim();
           if (textContent) {
             const parts = textContent.match(/^(.+?)(\.[^.]+)$/);
-            if (parts) {
+            if (parts && parts[1] && parts[2]) {
               name = parts[1];
               extension = parts[2];
             } else {
@@ -440,7 +497,7 @@ export function parsePagination(html: string): number | null {
   const counterText = counterElem.text().trim();
   if (counterText.includes('из')) {
     const parts = counterText.split('из');
-    if (parts.length === 2) {
+    if (parts.length === 2 && parts[1]) {
       const maxPages = parseInt(parts[1].trim());
       if (!isNaN(maxPages)) return maxPages;
     }

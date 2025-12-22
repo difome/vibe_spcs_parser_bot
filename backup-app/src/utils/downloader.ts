@@ -1,6 +1,6 @@
-import { downloadFileBuffer, fetchPage } from './http';
+import { downloadFileBuffer, fetchPage } from '@/utils/http';
 import * as cheerio from 'cheerio';
-import type { File } from '../types';
+import type { File } from '@/types';
 
 export async function extractDownloadUrlFromFilePage(fileUrl: string, cookies: Record<string, string>): Promise<string | null> {
   try {

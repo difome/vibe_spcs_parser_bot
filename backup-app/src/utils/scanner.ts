@@ -1,16 +1,17 @@
-import { fetchPageWithCookies } from './http';
-import { parseFolders, parseFiles, parsePagination, addPagination } from './parser';
-import { mergeCookies } from './cookies';
+import { fetchPageWithCookies } from '@/utils/http';
+import { parseFolders, parseFiles, parsePagination, addPagination, extractUsernameFromProfileUrl, parseUserSections } from '@/utils/parser';
+import { mergeCookies } from '@/utils/cookies';
 import * as cheerio from 'cheerio';
-import type { Folder, File } from '../types';
+import type { Folder, File, UserSection } from '@/types';
 
 export async function scanFolder(
   url: string,
   cookies: Record<string, string>,
   parentPath: string = '',
-  onCookiesUpdate?: (cookies: Record<string, string>) => void
+  onCookiesUpdate?: (cookies: Record<string, string>) => void,
+  skipPasswordProtected: boolean = false
 ): Promise<Folder> {
-  console.log(`Scanning folder: ${url}`);
+  console.log(`Scanning folder: ${url}`, { skipPasswordProtected });
   let currentCookies = cookies;
   const response = await fetchPageWithCookies(url, currentCookies);
   const html = response.html;
@@ -21,7 +22,7 @@ export async function scanFolder(
     }
   }
   
-  const folders = parseFolders(html);
+  const folders = parseFolders(html, skipPasswordProtected);
   let files = parseFiles(html);
   
   console.log(`Found ${folders.length} folders and ${files.length} files on page 1`);
@@ -56,7 +57,7 @@ export async function scanFolder(
   for (const folder of folders) {
     await new Promise(resolve => setTimeout(resolve, 200));
     const subfolderPath = currentPath ? `${currentPath}/${folder.name}` : folder.name;
-    const scannedFolder = await scanFolder(folder.url, currentCookies, subfolderPath, onCookiesUpdate);
+    const scannedFolder = await scanFolder(folder.url, currentCookies, subfolderPath, onCookiesUpdate, skipPasswordProtected);
     scannedFolders.push(scannedFolder);
   }
   
@@ -127,5 +128,108 @@ export function collectAllFiles(folder: Folder): File[] {
   });
   
   return Array.from(filesMap.values());
+}
+
+export async function getProfileSections(
+  profileUrl: string,
+  cookies: Record<string, string>
+): Promise<UserSection[]> {
+  const username = extractUsernameFromProfileUrl(profileUrl);
+  if (!username) {
+    throw new Error('Не удалось извлечь username из URL профиля');
+  }
+  
+  console.log(`Loading profile sections for user: ${username}`);
+  
+  // Получаем HTML страницы профиля
+  const baseUrl = 'https://spaces.im';
+  const cleanProfileUrl = profileUrl.split('?')[0]; // Убираем query параметры
+  const response = await fetchPageWithCookies(cleanProfileUrl, cookies);
+  const html = response.html;
+  
+  // Парсим секции пользователя
+  const sections = parseUserSections(html, username, baseUrl);
+  console.log(`Found ${sections.length} sections for user ${username}`);
+  
+  return sections;
+}
+
+export async function scanProfileByUrl(
+  profileUrl: string,
+  cookies: Record<string, string>,
+  onCookiesUpdate?: (cookies: Record<string, string>) => void,
+  selectedSectionIds?: string[]
+): Promise<{ folders: Folder[]; files: File[] }> {
+  const username = extractUsernameFromProfileUrl(profileUrl);
+  if (!username) {
+    throw new Error('Не удалось извлечь username из URL профиля');
+  }
+  
+  console.log(`Scanning profile for user: ${username}`, { selectedSectionIds });
+  
+  // Получаем HTML страницы профиля
+  const baseUrl = 'https://spaces.im';
+  const cleanProfileUrl = profileUrl.split('?')[0]; // Убираем query параметры
+  const response = await fetchPageWithCookies(cleanProfileUrl, cookies);
+  const html = response.html;
+  
+  let currentCookies = cookies;
+  if (Object.keys(response.cookies).length > 0) {
+    currentCookies = mergeCookies(currentCookies, response.cookies);
+    if (onCookiesUpdate) {
+      onCookiesUpdate(currentCookies);
+    }
+  }
+  
+  // Парсим секции пользователя
+  const sections = parseUserSections(html, username, baseUrl);
+  console.log(`Found ${sections.length} sections for user ${username}`);
+  
+  // Фильтруем секции по выбранным
+  const sectionsToScan = selectedSectionIds && selectedSectionIds.length > 0
+    ? sections.filter(s => selectedSectionIds.includes(s.id))
+    : sections;
+  
+  console.log(`Scanning ${sectionsToScan.length} selected sections`);
+  
+  const allFolders: Folder[] = [];
+  const allFiles: File[] = [];
+  const filesMap = new Map<string, File>();
+  
+  // Сканируем каждую выбранную секцию, пропуская папки с паролем
+  for (const section of sectionsToScan) {
+    console.log(`Scanning section: ${section.name} (${section.url})`);
+    try {
+      const rootFolder = await scanFolder(
+        section.url,
+        currentCookies,
+        section.folderName,
+        (newCookies) => {
+          currentCookies = newCookies;
+          if (onCookiesUpdate) {
+            onCookiesUpdate(newCookies);
+          }
+        },
+        true // skipPasswordProtected = true
+      );
+      
+      allFolders.push(rootFolder);
+      const files = collectAllFiles(rootFolder);
+      
+      files.forEach(file => {
+        if (!filesMap.has(file.id)) {
+          filesMap.set(file.id, file);
+          allFiles.push(file);
+        }
+      });
+      
+      console.log(`Section ${section.name}: found ${files.length} files`);
+    } catch (error) {
+      console.error(`Error scanning section ${section.name}:`, error);
+    }
+  }
+  
+  console.log(`Total files collected from profile: ${allFiles.length}`);
+  return { folders: allFolders, files: allFiles };
 }
 

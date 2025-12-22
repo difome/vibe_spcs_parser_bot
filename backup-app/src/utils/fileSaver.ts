@@ -1,9 +1,9 @@
-import type { File } from '../types';
-import type { SaveMode } from '../types';
-import { sanitizeFileName, extractFileNameFromUrl } from './formatters';
-import { config } from '../config';
+import type { File } from '@/types';
+import type { SaveMode } from '@/types';
+import { sanitizeFileName, extractFileNameFromUrl } from '@/utils/formatters';
+import { config } from '@/config';
 import axios from 'axios';
-import { extractDownloadUrlFromFilePage } from './downloader';
+import { extractDownloadUrlFromFilePage } from '@/utils/downloader';
 
 export async function downloadAndSaveFileOnServer(
   file: File,
