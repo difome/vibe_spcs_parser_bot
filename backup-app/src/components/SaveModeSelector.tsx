@@ -9,49 +9,66 @@ interface SaveModeSelectorProps {
 export function SaveModeSelector({ mode, onChange, disabled }: SaveModeSelectorProps) {
   return (
     <div className="space-y-3">
-      <h3 className="text-lg font-semibold text-white">Режим сохранения</h3>
+      <h3 className="text-sm font-medium text-gray-300">Режим сохранения</h3>
       <div className="grid grid-cols-2 gap-3">
-        <label
-          className={`flex flex-col p-4 rounded-lg border cursor-pointer transition-colors ${
+        <button
+          type="button"
+          onClick={() => !disabled && onChange('structure')}
+          disabled={disabled}
+          className={`relative flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all ${
             mode === 'structure'
-              ? 'bg-blue-500 bg-opacity-20 border-blue-500'
-              : 'bg-dark-hover border-dark-border hover:border-gray-600'
-          } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              ? 'bg-blue-600 bg-opacity-20 border-blue-500 shadow-lg shadow-blue-500/20'
+              : 'bg-dark-hover border-dark-border hover:border-gray-500'
+          } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
         >
-          <input
-            type="radio"
-            name="saveMode"
-            value="structure"
-            checked={mode === 'structure'}
-            onChange={() => onChange('structure')}
-            disabled={disabled}
-            className="mb-2"
-          />
-          <div className="text-white font-medium">Структура папок</div>
-          <div className="text-sm text-gray-400">Сохраняет папки и подпапки</div>
-        </label>
+          <div className={`w-5 h-5 rounded-full border-2 mb-3 flex items-center justify-center ${
+            mode === 'structure'
+              ? 'border-blue-500 bg-blue-500'
+              : 'border-gray-500'
+          }`}>
+            {mode === 'structure' && (
+              <div className="w-2.5 h-2.5 rounded-full bg-white" />
+            )}
+          </div>
+          <div className={`font-medium mb-1 ${
+            mode === 'structure' ? 'text-white' : 'text-gray-300'
+          }`}>
+            Структура папок
+          </div>
+          <div className="text-xs text-gray-400 text-center">
+            Сохраняет папки и подпапки
+          </div>
+        </button>
         
-        <label
-          className={`flex flex-col p-4 rounded-lg border cursor-pointer transition-colors ${
+        <button
+          type="button"
+          onClick={() => !disabled && onChange('flat')}
+          disabled={disabled}
+          className={`relative flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all ${
             mode === 'flat'
-              ? 'bg-blue-500 bg-opacity-20 border-blue-500'
-              : 'bg-dark-hover border-dark-border hover:border-gray-600'
-          } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              ? 'bg-blue-600 bg-opacity-20 border-blue-500 shadow-lg shadow-blue-500/20'
+              : 'bg-dark-hover border-dark-border hover:border-gray-500'
+          } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
         >
-          <input
-            type="radio"
-            name="saveMode"
-            value="flat"
-            checked={mode === 'flat'}
-            onChange={() => onChange('flat')}
-            disabled={disabled}
-            className="mb-2"
-          />
-          <div className="text-white font-medium">Все файлы</div>
-          <div className="text-sm text-gray-400">Все файлы в одну папку</div>
-        </label>
+          <div className={`w-5 h-5 rounded-full border-2 mb-3 flex items-center justify-center ${
+            mode === 'flat'
+              ? 'border-blue-500 bg-blue-500'
+              : 'border-gray-500'
+          }`}>
+            {mode === 'flat' && (
+              <div className="w-2.5 h-2.5 rounded-full bg-white" />
+            )}
+          </div>
+          <div className={`font-medium mb-1 ${
+            mode === 'flat' ? 'text-white' : 'text-gray-300'
+          }`}>
+            Все файлы
+          </div>
+          <div className="text-xs text-gray-400 text-center">
+            Все файлы в одну папку
+          </div>
+        </button>
       </div>
     </div>
   );
 }
-

@@ -1,6 +1,7 @@
 import { fetchPageWithCookies } from './http';
 import { parseFolders, parseFiles, parsePagination, addPagination } from './parser';
 import { mergeCookies } from './cookies';
+import * as cheerio from 'cheerio';
 import type { Folder, File } from '../types';
 
 export async function scanFolder(
@@ -30,6 +31,7 @@ export async function scanFolder(
   
   if (maxPages && maxPages > 1) {
     for (let page = 2; page <= maxPages; page++) {
+      await new Promise(resolve => setTimeout(resolve, 500));
       const pageUrl = addPagination(url, page);
       console.log(`Scanning page ${page}: ${pageUrl}`);
       const pageResponse = await fetchPageWithCookies(pageUrl, currentCookies);
@@ -46,42 +48,61 @@ export async function scanFolder(
     }
   }
   
-  const folderName = extractFolderName(url);
-  const currentPath = parentPath ? `${parentPath}/${folderName}` : folderName;
+  const folderName = extractFolderNameFromHtml(html, url, parentPath);
+  const currentPath = folderName ? (parentPath ? `${parentPath}/${folderName}` : folderName) : parentPath;
   
   console.log(`Scanning ${folders.length} subfolders...`);
-  const scannedFolders = await Promise.all(
-    folders.map(folder => 
-      scanFolder(folder.url, currentCookies, currentPath, onCookiesUpdate)
-    )
-  );
+  const scannedFolders = [];
+  for (const folder of folders) {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    const subfolderPath = currentPath ? `${currentPath}/${folder.name}` : folder.name;
+    const scannedFolder = await scanFolder(folder.url, currentCookies, subfolderPath, onCookiesUpdate);
+    scannedFolders.push(scannedFolder);
+  }
   
   files.forEach(file => {
-    file.path = `${currentPath}/${file.name}${file.extension}`;
+    file.path = currentPath ? `${currentPath}/${file.name}${file.extension}` : `${file.name}${file.extension}`;
   });
   
-  console.log(`Completed scanning ${folderName}: ${files.length} files, ${scannedFolders.length} subfolders`);
+  const displayName = folderName || (parentPath ? parentPath.split('/').pop() || 'root' : 'root');
+  console.log(`Completed scanning ${displayName}: ${files.length} files, ${scannedFolders.length} subfolders`);
   
   return {
     id: extractFolderId(url),
-    name: folderName,
+    name: displayName,
     url,
-    path: currentPath,
+    path: currentPath || parentPath || '',
     files,
     folders: scannedFolders,
   };
 }
 
-function extractFolderName(url: string): string {
-  if (url.includes('/list/-/')) {
-    if (url.includes('/pictures/')) return 'Фотографии';
-    if (url.includes('/music/')) return 'Музыка';
-    if (url.includes('/video/')) return 'Видео';
-    if (url.includes('/files/')) return 'Файлы';
-    return 'root';
+function extractFolderNameFromHtml(html: string, url: string, parentPath?: string): string {
+  if (parentPath && url.includes('/list/-/')) {
+    return '';
   }
+  if (url.includes('/list/-/')) {
+    return '';
+  }
+  
+  const $ = cheerio.load(html);
+  const titleMatch = $('h1.sub-title_main').text().trim();
+  if (titleMatch && titleMatch.includes('пользователя')) {
+    return '';
+  }
+  
+  const breadcrumb = $('.list-link__name, .js-dir_name').first().text().trim();
+  if (breadcrumb) {
+    return breadcrumb;
+  }
+  
   const match = url.match(/\/list\/([^\/]+)\//);
-  return match ? match[1].split('-').slice(0, -1).join('-') : 'unknown';
+  if (match) {
+    const urlName = match[1].split('-').slice(0, -1).join('-');
+    return urlName || '';
+  }
+  
+  return '';
 }
 
 function extractFolderId(url: string): string {

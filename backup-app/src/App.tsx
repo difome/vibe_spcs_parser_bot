@@ -6,7 +6,7 @@ import { parseCookies, createCookiesFromSid, mergeCookies } from './utils/cookie
 import { fetchPageWithCookies } from './utils/http';
 import { extractCKFromUrl, addCKToUrl } from './utils/url';
 import { config } from './config';
-import { saveCookies, loadCookies, saveUser, loadUser, clearCookies } from './utils/storage';
+import { saveCookies, loadCookies, saveUser, loadUser, clearCookies, saveSections, loadSections } from './utils/storage';
 import { ProgressBar } from './components/ProgressBar';
 import { formatBytes } from './utils/formatters';
 import { isNewYearPeriod } from './utils/date';
@@ -39,36 +39,6 @@ function App() {
       fileProgress: new Map(),
       errors: [],
     });
-
-  useEffect(() => {
-    if (sid.trim() === '' && Object.keys(fullCookies).length === 0) {
-      const savedCookies = loadCookies();
-      const savedUser = loadUser();
-      if (savedCookies) {
-        try {
-          const parsed = JSON.parse(savedCookies);
-          if (parsed.sid) {
-            setSid(parsed.sid);
-            setFullCookies(parsed);
-            if (savedUser) {
-              setState(prev => ({ ...prev, user: savedUser }));
-            }
-          }
-        } catch {
-          const parsed = parseCookies(savedCookies);
-          if (parsed.sid) {
-            setSid(parsed.sid);
-            setFullCookies(parsed);
-            if (savedUser) {
-              setState(prev => ({ ...prev, user: savedUser }));
-            }
-          }
-        }
-      } else if (savedUser && !state.user) {
-        setState(prev => ({ ...prev, user: savedUser }));
-      }
-    }
-  }, [sid, fullCookies, state.user]);
 
   const loadUserData = useCallback(async () => {
     const sidToUse = sid.trim();
@@ -153,6 +123,7 @@ function App() {
       const userData = { username, isCurrentUser, avatarUrl };
       saveUser(userData);
       saveCookies(JSON.stringify(currentCookies));
+      saveSections(sections);
       
       setState(prev => ({
         ...prev,
@@ -170,6 +141,57 @@ function App() {
       }));
     }
   }, [sid, fullCookies]);
+
+  useEffect(() => {
+    const savedCookies = loadCookies();
+    const savedUser = loadUser();
+    const savedSections = loadSections();
+    
+    if (savedCookies && sid.trim() === '' && Object.keys(fullCookies).length === 0) {
+      try {
+        const parsed = JSON.parse(savedCookies);
+        if (parsed.sid) {
+          setSid(parsed.sid);
+          setFullCookies(parsed);
+          if (savedUser) {
+            setState(prev => ({
+              ...prev,
+              user: savedUser,
+              sections: savedSections || [],
+              selectedSections: savedSections ? savedSections.map(s => s.id) : [],
+            }));
+          }
+        }
+      } catch {
+        const parsed = parseCookies(savedCookies);
+        if (parsed.sid) {
+          setSid(parsed.sid);
+          setFullCookies(parsed);
+          if (savedUser) {
+            setState(prev => ({
+              ...prev,
+              user: savedUser,
+              sections: savedSections || [],
+              selectedSections: savedSections ? savedSections.map(s => s.id) : [],
+            }));
+          }
+        }
+      }
+    } else if (savedUser && !state.user) {
+      setState(prev => ({
+        ...prev,
+        user: savedUser,
+        sections: savedSections || [],
+        selectedSections: savedSections ? savedSections.map((s: any) => s.id) : [],
+      }));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (sid.trim() && Object.keys(fullCookies).length > 0 && (!state.user || !state.sections.length)) {
+      loadUserData();
+    }
+  }, [sid, fullCookies, state.user, state.sections.length, loadUserData]);
 
   const handleLogout = useCallback(() => {
     clearCookies();
@@ -223,7 +245,7 @@ function App() {
         }
 
         console.log(`Scanning section: ${section.name} (${section.id})`);
-        const rootFolder = await scanFolder(section.url, updatedCookies, '', (newCookies) => {
+        const rootFolder = await scanFolder(section.url, updatedCookies, section.folderName, (newCookies) => {
           updatedCookies = newCookies;
           setFullCookies(newCookies);
           saveCookies(JSON.stringify(newCookies));
@@ -231,10 +253,6 @@ function App() {
         const files = collectAllFiles(rootFolder);
         
         console.log(`Section ${section.name}: found ${files.length} files`);
-        
-        files.forEach(file => {
-          file.path = `${section.folderName}/${file.path}`;
-        });
         
         allFiles.push(...files);
         folderMap.set(sectionId, { folder: rootFolder, sectionId });
@@ -395,6 +413,7 @@ function App() {
         }
         try {
           await downloadSingleFile(file, cookiesObj);
+          await new Promise(resolve => setTimeout(resolve, 200));
         } catch (error) {
           console.error('Error downloading file:', error);
         }

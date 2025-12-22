@@ -1,5 +1,4 @@
 import axios from 'axios';
-import type { AxiosInstance } from 'axios';
 import { formatCookies } from './cookies';
 import { config } from '../config';
 
@@ -27,7 +26,7 @@ export async function fetchPageWithCookies(
     url,
     cookies,
   }, {
-    timeout: 120000,
+    timeout: 180000,
   });
   return {
     html: response.data.html || response.data,

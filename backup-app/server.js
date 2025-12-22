@@ -45,7 +45,7 @@ app.post('/api/fetch', async (req, res) => {
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
       },
-      timeout: 120000,
+      timeout: 180000,
     });
     
     const setCookieHeaders = response.headers['set-cookie'] || [];

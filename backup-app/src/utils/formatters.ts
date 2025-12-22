@@ -7,6 +7,8 @@ export function formatBytes(bytes: number): string {
 }
 
 export function sanitizeFileName(fileName: string): string {
-  return fileName.replace(/[<>:"/\\|?*]/g, '_');
+  const parts = fileName.split('/');
+  const sanitizedParts = parts.map(part => part.replace(/[<>:"\\|?*]/g, '_'));
+  return sanitizedParts.join('/');
 }
 

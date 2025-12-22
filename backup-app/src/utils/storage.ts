@@ -1,5 +1,8 @@
+import type { UserSection } from '../types';
+
 const COOKIES_KEY = 'spaces_backup_cookies';
 const USER_KEY = 'spaces_backup_user';
+const SECTIONS_KEY = 'spaces_backup_sections';
 
 export function saveCookies(cookies: string): void {
   localStorage.setItem(COOKIES_KEY, cookies);
@@ -12,6 +15,7 @@ export function loadCookies(): string | null {
 export function clearCookies(): void {
   localStorage.removeItem(COOKIES_KEY);
   localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(SECTIONS_KEY);
 }
 
 export function saveUser(user: { username: string; isCurrentUser: boolean; avatarUrl?: string }): void {
@@ -20,6 +24,15 @@ export function saveUser(user: { username: string; isCurrentUser: boolean; avata
 
 export function loadUser(): { username: string; isCurrentUser: boolean; avatarUrl?: string } | null {
   const data = localStorage.getItem(USER_KEY);
+  return data ? JSON.parse(data) : null;
+}
+
+export function saveSections(sections: UserSection[]): void {
+  localStorage.setItem(SECTIONS_KEY, JSON.stringify(sections));
+}
+
+export function loadSections(): UserSection[] | null {
+  const data = localStorage.getItem(SECTIONS_KEY);
   return data ? JSON.parse(data) : null;
 }
 
