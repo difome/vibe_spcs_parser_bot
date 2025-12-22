@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { scanFolder, collectAllFiles } from './utils/scanner';
 import { downloadAndSaveFileOnServer } from './utils/fileSaver';
 import { extractUsername, checkIsCurrentUser, parseUserSections, extractAvatarUrl } from './utils/parser';
@@ -6,7 +6,7 @@ import { parseCookies, createCookiesFromSid, mergeCookies } from './utils/cookie
 import { fetchPageWithCookies } from './utils/http';
 import { extractCKFromUrl, addCKToUrl } from './utils/url';
 import { config } from './config';
-import { saveCookies, loadCookies, saveUser, loadUser, clearCookies, saveSections, loadSections } from './utils/storage';
+import { saveCookies, loadCookies, saveUser, loadUser, saveSections, loadSections, clearCookies } from './utils/storage';
 import { ProgressBar } from './components/ProgressBar';
 import { formatBytes } from './utils/formatters';
 import { isNewYearPeriod } from './utils/date';
@@ -21,6 +21,7 @@ function App() {
   const [sid, setSid] = useState('');
   const [fullCookies, setFullCookies] = useState<Record<string, string>>({});
   const [authCollapsed, setAuthCollapsed] = useState(false);
+  const isLoadingRef = useRef(false);
   const [state, setState] = useState<BackupState>({
     user: null,
     sections: [],
@@ -41,12 +42,15 @@ function App() {
     });
 
   const loadUserData = useCallback(async () => {
+    if (isLoadingRef.current) return;
+    
     const sidToUse = sid.trim();
     if (!sidToUse) {
       setState(prev => ({ ...prev, user: null, sections: [], selectedSections: [] }));
       return;
     }
 
+    isLoadingRef.current = true;
     try {
       setState(prev => ({ ...prev, status: 'loading' }));
       
@@ -109,7 +113,7 @@ function App() {
             console.log('Extracted username from profile page:', username);
           }
         } catch (e) {
-          console.log('Failed to load profile, using main page');
+          console.log('Failed to load profile, using main page HTML for sections');
           avatarUrl = extractAvatarUrl(html);
         }
       } else {
@@ -139,6 +143,8 @@ function App() {
         status: 'error',
         errors: [{ file: 'Load', error: errorMsg }],
       }));
+    } finally {
+      isLoadingRef.current = false;
     }
   }, [sid, fullCookies]);
 
@@ -182,18 +188,23 @@ function App() {
         ...prev,
         user: savedUser,
         sections: savedSections || [],
-        selectedSections: savedSections ? savedSections.map((s: any) => s.id) : [],
+        selectedSections: savedSections ? savedSections.map(s => s.id) : [],
       }));
     }
   }, []);
 
   useEffect(() => {
-    if (sid.trim() && Object.keys(fullCookies).length > 0 && (!state.user || !state.sections.length)) {
-      loadUserData();
+    if (sid.trim() && !isLoadingRef.current) {
+      if (!state.user && state.status !== 'loading') {
+        loadUserData();
+      } else if (state.user && state.sections.length === 0 && state.status !== 'loading') {
+        loadUserData();
+      }
     }
-  }, [sid, fullCookies, state.user, state.sections.length, loadUserData]);
+  }, [sid, loadUserData, state.user, state.sections.length, state.status]);
 
   const handleLogout = useCallback(() => {
+    isLoadingRef.current = false;
     clearCookies();
     setSid('');
     setFullCookies({});
@@ -490,7 +501,7 @@ function App() {
                     </label>
                     <input
                       type="text"
-                      value={sid}
+                      value={state.user && sid.trim() ? '*'.repeat(Math.min(sid.length, 50)) : sid}
                       onChange={(e) => setSid(e.target.value)}
                       placeholder="Введите значение cookie sid"
                       disabled={inProgress || !!state.user}
@@ -507,7 +518,7 @@ function App() {
                     <button
                       onClick={() => loadUserData()}
                       disabled={!canLoad || inProgress}
-                      className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:cursor-not-allowed text-white text-sm font-normal rounded-md transition-colors"
                     >
                       Войти
                     </button>

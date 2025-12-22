@@ -177,8 +177,31 @@ export function parseUserSections(html: string, username: string, baseUrl: strin
   }
   
   if (sections.length === 0) {
-    console.log('No sections found with list-link-darkblue, trying all links...');
+    console.log('No sections found with list-link-darkblue, trying other selectors...');
+    findSectionsInLinks('a.horiz-menu__link', true);
+    findSectionsInLinks('a.mysite-link', true);
+    findSectionsInLinks('a[href*="/pictures/"], a[href*="/music/"], a[href*="/video/"], a[href*="/files/"]', true);
+  }
+  
+  if (sections.length === 0) {
+    console.log('No sections found with specific selectors, trying all links...');
     findSectionsInLinks('a', username ? true : false);
+  }
+  
+  if (sections.length === 0 && username) {
+    console.log('No sections found in HTML, creating default sections from username...');
+    for (const [key, info] of Object.entries(sectionMap)) {
+      const sectionUrl = `${baseUrl}/${key}/user/${username}/list/-/`;
+      sections.push({
+        id: key,
+        name: info.name,
+        folderName: info.folderName,
+        url: sectionUrl,
+        icon: info.icon,
+        count: 0,
+        type: info.type,
+      });
+    }
   }
   
   console.log('Final sections:', sections);

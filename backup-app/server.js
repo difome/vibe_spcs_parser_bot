@@ -164,32 +164,6 @@ app.post('/api/download-and-save', async (req, res) => {
     
     if (!currentExt && urlExt) {
       finalFilePath = filePath + urlExt;
-    } else if (!currentExt && !urlExt) {
-      const contentType = downloadResponse.headers['content-type'];
-      const contentTypeMap = {
-        'image/jpeg': '.jpg',
-        'image/png': '.png',
-        'image/gif': '.gif',
-        'image/webp': '.webp',
-        'video/mp4': '.mp4',
-        'video/avi': '.avi',
-        'video/mkv': '.mkv',
-        'audio/mpeg': '.mp3',
-        'audio/mp3': '.mp3',
-        'audio/wav': '.wav',
-        'application/pdf': '.pdf',
-        'application/zip': '.zip',
-        'text/plain': '.txt',
-        'text/html': '.html',
-        'application/json': '.json',
-      };
-      
-      if (contentType) {
-        const ext = contentTypeMap[contentType.split(';')[0].trim()];
-        if (ext) {
-          finalFilePath = filePath + ext;
-        }
-      }
     }
     
     const baseDir = path.join(DOWNLOADS_DIR, username || 'default');
