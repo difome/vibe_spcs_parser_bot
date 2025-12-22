@@ -163,8 +163,10 @@
             </div>
           </div>
 
+          <FailedFilesList />
+
           <div
-            v-if="backupStore.errors.length > 0"
+            v-if="backupStore.errors.length > 0 && !backupStore.hasFailedFiles"
             class="bg-dark-surface/50 backdrop-blur-sm rounded-lg border border-red-500/30 p-6"
           >
             <h3 class="text-lg font-semibold text-red-400 mb-3">Ошибки</h3>
@@ -196,6 +198,7 @@ import StatusBadge from './components/StatusBadge.vue'
 import SectionSelector from './components/SectionSelector.vue'
 import SaveModeSelector from './components/SaveModeSelector.vue'
 import FilesList from './components/FilesList.vue'
+import FailedFilesList from './components/FailedFilesList.vue'
 
 const authStore = useAuthStore()
 const backupStore = useBackupStore()

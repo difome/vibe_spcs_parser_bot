@@ -47,6 +47,15 @@ export const useBackupStore = defineStore('backup', () => {
     Math.ceil(scannedFiles.value.length / filesPerPage.value)
   )
 
+  const failedFiles = computed(() => {
+    return scannedFiles.value.filter((file) => {
+      const progress = fileProgress.value.get(file.id)
+      return progress?.status === 'error'
+    })
+  })
+
+  const hasFailedFiles = computed(() => failedFiles.value.length > 0)
+
   async function scan() {
     if (!authStore.user || authStore.selectedSections.length === 0) return
 
@@ -270,6 +279,47 @@ export const useBackupStore = defineStore('backup', () => {
     })
   }
 
+  async function retryAllFailed() {
+    if (failedFiles.value.length === 0 || !authStore.user) return
+
+    const cookiesObj = authStore.fullCookies.sid
+      ? authStore.fullCookies
+      : createCookiesFromSid(authStore.sid)
+
+    status.value = 'downloading'
+
+    for (const file of failedFiles.value) {
+      try {
+        await downloadSingleFile(file, cookiesObj)
+        await new Promise((resolve) => setTimeout(resolve, 200))
+      } catch (error) {
+        console.error('Error retrying file:', error)
+      }
+    }
+
+    if (status.value === 'downloading') {
+      status.value = 'idle'
+    }
+  }
+
+  function getFileViewUrl(file: File): string {
+    if (file.downloadUrl && file.downloadUrl.includes('/view/')) {
+      return file.downloadUrl.startsWith('http') ? file.downloadUrl : `https://spaces.im${file.downloadUrl}`
+    }
+
+    if (file.type === 7) {
+      return `https://spaces.im/pictures/view/${file.id}/`
+    } else if (file.type === 6) {
+      return `https://spaces.im/music/view/${file.id}/`
+    } else if (file.type === 25) {
+      return `https://spaces.im/video/view/${file.id}/`
+    } else if (file.type === 5) {
+      return `https://spaces.im/files/view/${file.id}/`
+    } else {
+      return `https://spaces.im/files/view/${file.id}/`
+    }
+  }
+
   return {
     saveMode,
     savePath,
@@ -290,6 +340,8 @@ export const useBackupStore = defineStore('backup', () => {
     inProgress,
     paginatedFiles,
     totalPages,
+    failedFiles,
+    hasFailedFiles,
     scan,
     resetScan,
     downloadSingleFile,
@@ -297,6 +349,8 @@ export const useBackupStore = defineStore('backup', () => {
     setSaveMode,
     setCurrentPage,
     retryFile,
+    retryAllFailed,
+    getFileViewUrl,
   }
 })
 
