@@ -168,12 +168,6 @@ export function parseFolders(html: string): Folder[] {
     const href = $elem.attr('href');
     const id = $elem.attr('data-nid');
     
-    const passwordIcon = $elem.find('.ico_files_dir_password');
-    if (passwordIcon.length > 0) {
-      console.log(`Skipping password-protected folder (id: ${id})`);
-      return;
-    }
-    
     let name = $elem.find('.js-dir_name').text().trim();
     if (!name) {
       name = $elem.find('.list-link__name').text().trim();
