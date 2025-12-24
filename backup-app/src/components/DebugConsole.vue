@@ -90,6 +90,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { logger, type LogEntry } from '@/utils/logger'
+import { uiStorage } from '@/utils/uiStorage'
 
 interface Props {
   isOpen: boolean
@@ -229,23 +230,15 @@ watch(
   (isOpen) => {
     if (!isOpen) return
 
-    const savedPosition = localStorage.getItem('debugConsole_position')
-    const savedSize = localStorage.getItem('debugConsole_size')
+    const savedPosition = uiStorage.getDebugConsolePosition()
+    const savedSize = uiStorage.getDebugConsoleSize()
 
     if (savedPosition) {
-      try {
-        position.value = JSON.parse(savedPosition)
-      } catch {
-        // ignore
-      }
+      position.value = savedPosition
     }
 
     if (savedSize) {
-      try {
-        size.value = JSON.parse(savedSize)
-      } catch {
-        // ignore
-      }
+      size.value = savedSize
     }
 
     logs.value = logger.getLogs()
@@ -264,7 +257,7 @@ watch(
   () => position.value,
   (newPosition) => {
     if (props.isOpen && (newPosition.x !== 0 || newPosition.y !== 0)) {
-      localStorage.setItem('debugConsole_position', JSON.stringify(newPosition))
+      uiStorage.setDebugConsolePosition(newPosition)
     }
   },
   { deep: true }
@@ -274,7 +267,7 @@ watch(
   () => size.value,
   (newSize) => {
     if (props.isOpen) {
-      localStorage.setItem('debugConsole_size', JSON.stringify(newSize))
+      uiStorage.setDebugConsoleSize(newSize)
     }
   },
   { deep: true }

@@ -1,4 +1,4 @@
-export function extractCKFromUrl(url: string): string | null {
+export function extractCKFromUrl(url: string | undefined): string | null {
   if (!url) return null;
   const match = url.match(/[?&]CK=([^&]+)/);
   return match ? match[1] : null;

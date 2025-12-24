@@ -1,3 +1,10 @@
+export enum FileType {
+  PICTURES = 7,
+  MUSIC = 6,
+  VIDEO = 25,
+  FILES = 5,
+}
+
 export interface File {
   id: string;
   name: string;

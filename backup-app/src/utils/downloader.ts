@@ -1,4 +1,5 @@
 import { fetchPage } from '@/utils/http';
+import { config } from '@/config';
 import * as cheerio from 'cheerio';
 
 
@@ -47,7 +48,7 @@ export async function extractDownloadUrlFromFilePage(
     if (downloadLink) {
       const fullUrl = downloadLink.startsWith('http')
         ? downloadLink
-        : `https://spaces.im${downloadLink}`;
+        : `${config.baseUrl}${downloadLink}`;
       console.log(`Extracted download URL from file page: ${fullUrl}`);
       return fullUrl;
     }

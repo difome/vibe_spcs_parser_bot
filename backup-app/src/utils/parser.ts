@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 import type { File, Folder, UserSection } from '@/types';
 import { extractFileNameFromUrl } from '@/utils/formatters';
+import { config, buildSpacesUrl } from '@/config';
 
 export function extractUsernameFromProfileUrl(url: string): string | null {
   // Извлекаем username из URL профиля: https://spaces.im/mysite/index/username/...
@@ -287,7 +288,7 @@ export function parseFolders(html: string, skipPasswordProtected: boolean = fals
       
       if (name && href.includes('/list/')) {
         processedIds.add(id);
-        const fullUrl = href.startsWith('http') ? href : `https://spaces.im${href}`;
+        const fullUrl = href.startsWith('http') ? href : `${config.baseUrl}${href}`;
         console.log(`Found folder: ${name} (id: ${id}, href: ${fullUrl}, files: ${fileCount || 0})`);
         folders.push({
           id,
@@ -428,25 +429,15 @@ export function parseFiles(html: string): File[] {
     
     if (id && name) {
     if (!downloadLink && viewLink) {
-      downloadLink = viewLink.startsWith('http') ? viewLink : `https://spaces.im${viewLink}`;
+      downloadLink = viewLink.startsWith('http') ? viewLink : `${config.baseUrl}${viewLink}`;
       console.log(`File ${name}${extension} (id: ${id}, type: ${type}) has view link, will fetch download URL from page`);
     } else if (!downloadLink) {
-      if (type === 7) {
-        downloadLink = `https://spaces.im/pictures/view/${id}/`;
-      } else if (type === 6) {
-        downloadLink = `https://spaces.im/music/view/${id}/`;
-      } else if (type === 25) {
-        downloadLink = `https://spaces.im/video/view/${id}/`;
-      } else if (type === 5) {
-        downloadLink = `https://spaces.im/files/view/${id}/`;
-      } else {
-        downloadLink = `https://spaces.im/files/view/${id}/`;
-      }
+      downloadLink = buildSpacesUrl(type, id, 'view')
       console.log(`Warning: File ${name}${extension} (id: ${id}, type: ${type}) has no download link, will fetch from page`);
     } else {
       downloadLink = downloadLink.startsWith('http') 
         ? downloadLink 
-        : `https://spaces.im${downloadLink}`;
+        : `${config.baseUrl}${downloadLink}`;
     }
     
     if ((!name || !extension) && (directUrl || downloadLink)) {

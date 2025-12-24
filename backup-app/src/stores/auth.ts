@@ -35,6 +35,10 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!user.value)
 
+  const effectiveCookies = computed(() => 
+    fullCookies.value.sid ? fullCookies.value : createCookiesFromSid(sid.value)
+  )
+
   async function loadSavedData() {
     const savedCookies = loadCookies()
     const savedUser = loadUser()
@@ -119,8 +123,8 @@ export const useAuthStore = defineStore('auth', () => {
       let avatarUrl: string | undefined
       let sectionsHtml = html
 
-      if (!username && response.cookies.user_id) {
-        console.log('Username not found, trying to load profile by user_id:', response.cookies.user_id)
+      if (!username) {
+        console.log('Username not found, trying to load profile page')
         try {
           const profileUrl = `${config.baseUrl}/mysite/index/`
           const profileResponse = await fetchPageWithCookies(profileUrl, currentCookies)
@@ -166,14 +170,16 @@ export const useAuthStore = defineStore('auth', () => {
 
       console.log('Parsed sections:', parsedSections)
 
-      const userData: User = { username, isCurrentUser, avatarUrl }
-      saveUser(userData)
+      if (username) {
+        const userData: User = { username, isCurrentUser, avatarUrl }
+        saveUser(userData)
+        saveSections(parsedSections)
+        user.value = userData
+        sections.value = parsedSections
+        selectedSections.value = parsedSections.map((s) => s.id)
+      }
+      
       saveCookies(JSON.stringify(currentCookies))
-      saveSections(parsedSections)
-
-      user.value = userData
-      sections.value = parsedSections
-      selectedSections.value = parsedSections.map((s) => s.id)
     } catch (error) {
       throw error
     } finally {
@@ -208,6 +214,7 @@ export const useAuthStore = defineStore('auth', () => {
     selectedSections,
     isLoading,
     isAuthenticated,
+    effectiveCookies,
     loadSavedData,
     loadUserData,
     logout,

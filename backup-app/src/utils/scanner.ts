@@ -142,7 +142,7 @@ export async function getProfileSections(
   console.log(`Loading profile sections for user: ${username}`);
   
   // Получаем HTML страницы профиля
-  const baseUrl = 'https://spaces.im';
+  const baseUrl = config.baseUrl;
   const cleanProfileUrl = profileUrl.split('?')[0]; // Убираем query параметры
   const response = await fetchPageWithCookies(cleanProfileUrl, cookies);
   const html = response.html;
@@ -168,7 +168,7 @@ export async function scanProfileByUrl(
   console.log(`Scanning profile for user: ${username}`, { selectedSectionIds });
   
   // Получаем HTML страницы профиля
-  const baseUrl = 'https://spaces.im';
+  const baseUrl = config.baseUrl;
   const cleanProfileUrl = profileUrl.split('?')[0]; // Убираем query параметры
   const response = await fetchPageWithCookies(cleanProfileUrl, cookies);
   const html = response.html;

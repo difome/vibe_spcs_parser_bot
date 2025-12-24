@@ -3,8 +3,8 @@ import { ref, computed, shallowRef } from 'vue'
 import type { File, Folder, BackupStatus, SaveMode, FileDownloadProgress, UserSection } from '@/types'
 import { scanFolder, collectAllFiles, scanProfileByUrl, getProfileSections } from '@/utils/scanner'
 import { downloadAndSaveFileOnServer } from '@/utils/fileSaver'
-import { createCookiesFromSid } from '@/utils/cookies'
-import { buildSpacesUrl } from '@/config'
+import { mergeCookies } from '@/utils/cookies'
+import { buildSpacesUrl, config } from '@/config'
 import { useAuthStore } from '@/stores/auth'
 
 export const useBackupStore = defineStore('backup', () => {
@@ -65,9 +65,7 @@ export const useBackupStore = defineStore('backup', () => {
     if (!authStore.user || authStore.selectedSections.length === 0) return
 
     try {
-      const cookiesObj = authStore.fullCookies.sid
-        ? authStore.fullCookies
-        : createCookiesFromSid(authStore.sid)
+      const cookiesObj = authStore.effectiveCookies
       status.value = 'scanning'
       scannedFiles.value = []
       fileProgress.value = new Map()
@@ -93,8 +91,7 @@ export const useBackupStore = defineStore('backup', () => {
           updatedCookies,
           section.folderName,
           (newCookies) => {
-            updatedCookies = newCookies
-            authStore.updateCookies(newCookies)
+            updatedCookies = mergeCookies(updatedCookies, newCookies)
           }
         )
         const files = collectAllFiles(rootFolder)
@@ -152,9 +149,7 @@ export const useBackupStore = defineStore('backup', () => {
     if (!authStore.user) return
 
     try {
-      const cookiesObj = authStore.fullCookies.sid
-        ? authStore.fullCookies
-        : createCookiesFromSid(authStore.sid)
+      const cookiesObj = authStore.effectiveCookies
 
       const sections = await getProfileSections(profileUrl, cookiesObj)
       profileSections.value = sections
@@ -173,9 +168,7 @@ export const useBackupStore = defineStore('backup', () => {
     if (!authStore.user || selectedProfileSections.value.length === 0) return
 
     try {
-      const cookiesObj = authStore.fullCookies.sid
-        ? authStore.fullCookies
-        : createCookiesFromSid(authStore.sid)
+      const cookiesObj = authStore.effectiveCookies
       status.value = 'scanning'
       scannedFiles.value = []
       fileProgress.value = new Map()
@@ -189,8 +182,7 @@ export const useBackupStore = defineStore('backup', () => {
         profileUrl,
         updatedCookies,
         (newCookies) => {
-          updatedCookies = newCookies
-          authStore.updateCookies(newCookies)
+          updatedCookies = mergeCookies(updatedCookies, newCookies)
         },
         selectedProfileSections.value
       )
@@ -320,9 +312,7 @@ export const useBackupStore = defineStore('backup', () => {
     if (scannedFiles.value.length === 0 || !authStore.user) return
 
     try {
-      const cookiesObj = authStore.fullCookies.sid
-        ? authStore.fullCookies
-        : createCookiesFromSid(authStore.sid)
+      const cookiesObj = authStore.effectiveCookies
       status.value = 'downloading'
       downloadDuration.value = null
       const startTime = Date.now()
@@ -364,9 +354,7 @@ export const useBackupStore = defineStore('backup', () => {
     const file = scannedFiles.value.find((f) => f.id === fileId)
     if (!file || !authStore.user) return
 
-    const cookiesObj = authStore.fullCookies.sid
-      ? authStore.fullCookies
-      : createCookiesFromSid(authStore.sid)
+    const cookiesObj = authStore.effectiveCookies
 
     downloadSingleFile(file, cookiesObj).catch(() => {
       // Error already handled in downloadSingleFile
@@ -376,9 +364,7 @@ export const useBackupStore = defineStore('backup', () => {
   async function retryAllFailed() {
     if (failedFiles.value.length === 0 || !authStore.user) return
 
-    const cookiesObj = authStore.fullCookies.sid
-      ? authStore.fullCookies
-      : createCookiesFromSid(authStore.sid)
+    const cookiesObj = authStore.effectiveCookies
 
     status.value = 'downloading'
 
@@ -398,7 +384,7 @@ export const useBackupStore = defineStore('backup', () => {
 
   function getFileViewUrl(file: File): string {
     if (file.downloadUrl && file.downloadUrl.includes('/view/')) {
-      return file.downloadUrl.startsWith('http') ? file.downloadUrl : `https://spaces.im${file.downloadUrl}`
+      return file.downloadUrl.startsWith('http') ? file.downloadUrl : `${config.baseUrl}${file.downloadUrl}`
     }
 
     return buildSpacesUrl(file.type, file.id, 'view')
