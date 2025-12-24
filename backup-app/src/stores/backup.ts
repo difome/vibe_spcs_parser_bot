@@ -23,7 +23,6 @@ export const useBackupStore = defineStore('backup', () => {
   const currentFile = ref<string | undefined>()
   const fileProgress = ref(new Map<string, FileDownloadProgress>())
   const errors = ref<Array<{ file: string; error: string }>>([])
-  const downloadDuration = ref<number | null>(null)
 
   const canScan = computed(
     () =>
@@ -236,8 +235,6 @@ export const useBackupStore = defineStore('backup', () => {
     downloadedSize.value = 0
     totalSize.value = 0
     errors.value = []
-    downloadDuration.value = null
-    currentFile.value = undefined
     rootFolder.value = null
     currentPage.value = 1
     status.value = 'idle'
@@ -252,12 +249,6 @@ export const useBackupStore = defineStore('backup', () => {
       return
     }
 
-    const startTime = Date.now()
-    let lastProgress = 0
-    let lastTime = startTime
-    let estimatedFileSize = 5 * 1024 * 1024
-    let lastSpeed = 0
-
     const newProgress = new Map(fileProgress.value)
     const progress = newProgress.get(file.id)
     if (progress) {
@@ -266,8 +257,6 @@ export const useBackupStore = defineStore('backup', () => {
         status: 'downloading',
         progress: 0,
         speed: 0,
-        lastLoaded: 0,
-        lastTime: startTime,
       })
     }
     fileProgress.value = newProgress
@@ -280,37 +269,14 @@ export const useBackupStore = defineStore('backup', () => {
         authStore.user.username,
         saveMode.value,
         (progressPercent) => {
-          const now = Date.now()
           const updatedProgress = new Map(fileProgress.value)
           const fileProgressItem = updatedProgress.get(file.id)
           if (fileProgressItem) {
-            const timeDelta = (now - lastTime) / 1000
-            
-            if (timeDelta > 0.1 && progressPercent > lastProgress) {
-              if (progressPercent > 0 && progressPercent < 100) {
-                const currentLoaded = (progressPercent / 100) * estimatedFileSize
-                const lastLoadedBytes = (lastProgress / 100) * estimatedFileSize
-                const bytesDelta = currentLoaded - lastLoadedBytes
-                const calculatedSpeed = bytesDelta / timeDelta
-                
-                if (calculatedSpeed > 0) {
-                  lastSpeed = calculatedSpeed
-                  if (estimatedFileSize < currentLoaded * 1.2) {
-                    estimatedFileSize = currentLoaded * 1.1
-                  }
-                }
-              }
-            }
-
             updatedProgress.set(file.id, {
               ...fileProgressItem,
               progress: progressPercent,
-              speed: lastSpeed,
-              lastLoaded: (progressPercent / 100) * estimatedFileSize,
-              lastTime: now,
+              speed: 0,
             })
-            lastProgress = progressPercent
-            lastTime = now
           }
           fileProgress.value = updatedProgress
         }
@@ -354,8 +320,6 @@ export const useBackupStore = defineStore('backup', () => {
         ? authStore.fullCookies
         : createCookiesFromSid(authStore.sid)
       status.value = 'downloading'
-      downloadDuration.value = null
-      const startTime = Date.now()
 
       for (const file of scannedFiles.value) {
         const progress = fileProgress.value.get(file.id)
@@ -370,13 +334,9 @@ export const useBackupStore = defineStore('backup', () => {
         }
       }
 
-      const endTime = Date.now()
-      downloadDuration.value = Math.round((endTime - startTime) / 1000)
-      currentFile.value = undefined
       status.value = 'completed'
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error'
-      currentFile.value = undefined
       status.value = 'error'
       errors.value.push({ file: 'General', error: errorMsg })
     }
@@ -459,7 +419,6 @@ export const useBackupStore = defineStore('backup', () => {
     currentFile,
     fileProgress,
     errors,
-    downloadDuration,
     canScan,
     canDownload,
     inProgress,
