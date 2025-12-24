@@ -3,7 +3,7 @@ import type { File, Folder, UserSection } from '@/types';
 import { extractFileNameFromUrl } from '@/utils/formatters';
 
 export function extractUsernameFromProfileUrl(url: string): string | null {
-  // Извлекаем username из URL профиля: https://spaces.im/mysite/index/serega9199/...
+  // Извлекаем username из URL профиля: https://spaces.im/mysite/index/username/...
   const profileMatch = url.match(/\/mysite\/index\/([^\/\?]+)/);
   if (profileMatch && profileMatch[1]) {
     return profileMatch[1];
