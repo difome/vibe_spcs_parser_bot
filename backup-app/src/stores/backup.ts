@@ -257,7 +257,6 @@ export const useBackupStore = defineStore('backup', () => {
     let lastTime = startTime
     let estimatedFileSize = 5 * 1024 * 1024
     let lastSpeed = 0
-    const speedHistory: number[] = []
 
     const newProgress = new Map(fileProgress.value)
     const progress = newProgress.get(file.id)
@@ -286,35 +285,19 @@ export const useBackupStore = defineStore('backup', () => {
           const fileProgressItem = updatedProgress.get(file.id)
           if (fileProgressItem) {
             const timeDelta = (now - lastTime) / 1000
-            const totalTime = (now - startTime) / 1000
             
-            if (progressPercent > 0 && progressPercent < 100) {
-              const currentLoaded = (progressPercent / 100) * estimatedFileSize
-              
-              if (timeDelta > 0.05 && progressPercent > lastProgress) {
+            if (timeDelta > 0.1 && progressPercent > lastProgress) {
+              if (progressPercent > 0 && progressPercent < 100) {
+                const currentLoaded = (progressPercent / 100) * estimatedFileSize
                 const lastLoadedBytes = (lastProgress / 100) * estimatedFileSize
                 const bytesDelta = currentLoaded - lastLoadedBytes
-                const instantSpeed = bytesDelta / timeDelta
+                const calculatedSpeed = bytesDelta / timeDelta
                 
-                if (instantSpeed > 0) {
-                  speedHistory.push(instantSpeed)
-                  if (speedHistory.length > 10) {
-                    speedHistory.shift()
-                  }
-                  
-                  const avgSpeed = speedHistory.reduce((a, b) => a + b, 0) / speedHistory.length
-                  lastSpeed = avgSpeed
-                  
+                if (calculatedSpeed > 0) {
+                  lastSpeed = calculatedSpeed
                   if (estimatedFileSize < currentLoaded * 1.2) {
                     estimatedFileSize = currentLoaded * 1.1
                   }
-                }
-              }
-              
-              if (lastSpeed === 0 && totalTime > 0.5 && progressPercent > 1) {
-                const averageSpeed = currentLoaded / totalTime
-                if (averageSpeed > 0) {
-                  lastSpeed = averageSpeed
                 }
               }
             }
@@ -322,7 +305,7 @@ export const useBackupStore = defineStore('backup', () => {
             updatedProgress.set(file.id, {
               ...fileProgressItem,
               progress: progressPercent,
-              speed: lastSpeed > 0 ? lastSpeed : 0,
+              speed: lastSpeed,
               lastLoaded: (progressPercent / 100) * estimatedFileSize,
               lastTime: now,
             })
