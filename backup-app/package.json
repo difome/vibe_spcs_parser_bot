@@ -11,7 +11,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,vue}\"",
     "preview": "vite preview",
     "server": "nodemon server.ts",
-    "start": "concurrently \"npm run server\" \"npm run dev\"",
+    "start": "concurrently \"yarn run server\" \"yarn run dev\"",
     "test": "vitest",
     "test:ui": "vitest --ui"
   },
