@@ -23,6 +23,8 @@ import {
   saveSections,
   loadSections,
   clearCookies,
+  clearAllAuthData,
+  migrateOldKeys,
 } from '@/utils/storage'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -35,10 +37,13 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!user.value)
 
-  function loadSavedData() {
+  async function loadSavedData() {
+    migrateOldKeys()
     const savedCookies = loadCookies()
     const savedUser = loadUser()
     const savedSections = loadSections()
+
+    let hasSid = false
 
     if (savedCookies && sid.value.trim() === '' && Object.keys(fullCookies.value).length === 0) {
       try {
@@ -46,6 +51,7 @@ export const useAuthStore = defineStore('auth', () => {
         if (parsed.sid) {
           sid.value = parsed.sid
           fullCookies.value = parsed
+          hasSid = true
           if (savedUser) {
             user.value = savedUser
             sections.value = savedSections || []
@@ -57,6 +63,7 @@ export const useAuthStore = defineStore('auth', () => {
         if (parsed.sid) {
           sid.value = parsed.sid
           fullCookies.value = parsed
+          hasSid = true
           if (savedUser) {
             user.value = savedUser
             sections.value = savedSections || []
@@ -68,6 +75,14 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = savedUser
       sections.value = savedSections || []
       selectedSections.value = savedSections ? savedSections.map((s) => s.id) : []
+    }
+
+    if (hasSid && sid.value.trim()) {
+      try {
+        await loadUserData()
+      } catch (error) {
+        console.error('Failed to load user data:', error)
+      }
     }
   }
 
@@ -171,7 +186,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   function logout() {
     isLoading.value = false
-    clearCookies()
+    clearAllAuthData()
     sid.value = ''
     fullCookies.value = {}
     user.value = null

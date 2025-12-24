@@ -293,7 +293,7 @@ async function handleScanProfile() {
   await backupStore.scanProfile(profileUrl.value.trim())
 }
 
-onMounted(() => {
-  authStore.loadSavedData()
+onMounted(async () => {
+  await authStore.loadSavedData()
 })
 </script>
