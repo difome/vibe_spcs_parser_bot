@@ -27,7 +27,7 @@
       <div
         v-for="file in paginatedFiles"
         :key="file.id"
-        v-memo="[file.id, getFileProgress(file.id)?.status, getFileProgress(file.id)?.progress]"
+        v-memo="[file.id, getFileProgress(file.id)?.status, getFileProgress(file.id)?.progress, getFileProgress(file.id)?.speed]"
         :class="[
           'p-3 bg-dark-hover rounded border',
           getFileBorderClass(file.id),
@@ -43,7 +43,10 @@
               <div v-if="isDownloading(file.id)" class="space-y-1">
                 <div class="flex justify-between text-xs text-gray-400">
                   <span>{{ getFileProgress(file.id)?.progress.toFixed(1) }}%</span>
-                  <span>{{ formatBytes(getFileProgress(file.id)?.speed || 0) }}/s</span>
+                  <span v-if="(getFileProgress(file.id)?.speed || 0) > 0">
+                    {{ formatBytes(getFileProgress(file.id)?.speed || 0) }}/s
+                  </span>
+                  <span v-else class="text-gray-500">—</span>
                 </div>
                 <div class="w-full h-1 bg-dark-surface rounded-full overflow-hidden">
                   <div

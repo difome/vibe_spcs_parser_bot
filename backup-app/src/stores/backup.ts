@@ -249,6 +249,12 @@ export const useBackupStore = defineStore('backup', () => {
       return
     }
 
+    const startTime = Date.now()
+    let lastProgress = 0
+    let lastTime = startTime
+    let estimatedFileSize = 5 * 1024 * 1024
+    let lastSpeed = 0
+
     const newProgress = new Map(fileProgress.value)
     const progress = newProgress.get(file.id)
     if (progress) {
@@ -257,6 +263,8 @@ export const useBackupStore = defineStore('backup', () => {
         status: 'downloading',
         progress: 0,
         speed: 0,
+        lastLoaded: 0,
+        lastTime: startTime,
       })
     }
     fileProgress.value = newProgress
@@ -269,14 +277,39 @@ export const useBackupStore = defineStore('backup', () => {
         authStore.user.username,
         saveMode.value,
         (progressPercent) => {
+          const now = Date.now()
           const updatedProgress = new Map(fileProgress.value)
           const fileProgressItem = updatedProgress.get(file.id)
           if (fileProgressItem) {
+            const timeDelta = (now - lastTime) / 1000
+            
+            if (timeDelta > 0.1 && progressPercent > lastProgress) {
+              const progressDelta = progressPercent - lastProgress
+              
+              if (progressPercent > 0 && progressPercent < 100) {
+                const currentLoaded = (progressPercent / 100) * estimatedFileSize
+                const lastLoadedBytes = (lastProgress / 100) * estimatedFileSize
+                const bytesDelta = currentLoaded - lastLoadedBytes
+                const calculatedSpeed = bytesDelta / timeDelta
+                
+                if (calculatedSpeed > 0) {
+                  lastSpeed = calculatedSpeed
+                  if (estimatedFileSize < currentLoaded * 1.2) {
+                    estimatedFileSize = currentLoaded * 1.1
+                  }
+                }
+              }
+            }
+
             updatedProgress.set(file.id, {
               ...fileProgressItem,
               progress: progressPercent,
-              speed: 0,
+              speed: lastSpeed,
+              lastLoaded: (progressPercent / 100) * estimatedFileSize,
+              lastTime: now,
             })
+            lastProgress = progressPercent
+            lastTime = now
           }
           fileProgress.value = updatedProgress
         }
