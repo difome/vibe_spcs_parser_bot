@@ -23,6 +23,7 @@ export const useBackupStore = defineStore('backup', () => {
   const currentFile = ref<string | undefined>()
   const fileProgress = ref(new Map<string, FileDownloadProgress>())
   const errors = ref<Array<{ file: string; error: string }>>([])
+  const downloadDuration = ref<number | null>(null)
 
   const canScan = computed(
     () =>
@@ -235,6 +236,8 @@ export const useBackupStore = defineStore('backup', () => {
     downloadedSize.value = 0
     totalSize.value = 0
     errors.value = []
+    downloadDuration.value = null
+    currentFile.value = undefined
     rootFolder.value = null
     currentPage.value = 1
     status.value = 'idle'
@@ -320,6 +323,8 @@ export const useBackupStore = defineStore('backup', () => {
         ? authStore.fullCookies
         : createCookiesFromSid(authStore.sid)
       status.value = 'downloading'
+      downloadDuration.value = null
+      const startTime = Date.now()
 
       for (const file of scannedFiles.value) {
         const progress = fileProgress.value.get(file.id)
@@ -334,9 +339,13 @@ export const useBackupStore = defineStore('backup', () => {
         }
       }
 
+      const endTime = Date.now()
+      downloadDuration.value = Math.round((endTime - startTime) / 1000)
+      currentFile.value = undefined
       status.value = 'completed'
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error'
+      currentFile.value = undefined
       status.value = 'error'
       errors.value.push({ file: 'General', error: errorMsg })
     }
@@ -419,6 +428,7 @@ export const useBackupStore = defineStore('backup', () => {
     currentFile,
     fileProgress,
     errors,
+    downloadDuration,
     canScan,
     canDownload,
     inProgress,

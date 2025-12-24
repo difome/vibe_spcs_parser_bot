@@ -214,7 +214,7 @@
               </div>
 
               <div v-if="backupStore.status === 'completed' && backupStore.downloadDuration !== null" class="text-sm text-green-400">
-                Время скачивания: {{ formatDuration(backupStore.downloadDuration) }}
+                Время скачивания файлов: {{ formatDuration(backupStore.downloadDuration) }}
               </div>
             </div>
           </div>
