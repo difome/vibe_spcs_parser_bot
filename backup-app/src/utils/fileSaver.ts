@@ -1,7 +1,7 @@
 import type { File } from '@/types';
 import type { SaveMode } from '@/types';
 import { sanitizeFileName, extractFileNameFromUrl } from '@/utils/formatters';
-import { config } from '@/config';
+import { config, buildSpacesUrl } from '@/config';
 import axios from 'axios';
 import { extractDownloadUrlFromFilePage } from '@/utils/downloader';
 
@@ -17,37 +17,13 @@ export async function downloadAndSaveFileOnServer(
   if (!fileUrl || fileUrl.includes('/view/') || !fileUrl.includes('/download/')) {
     let viewUrl = file.downloadUrl?.includes('/view/') 
       ? file.downloadUrl 
-      : null;
-    
-    if (!viewUrl) {
-      if (file.type === 7) {
-        viewUrl = `https://spaces.im/pictures/view/${file.id}/`;
-      } else if (file.type === 6) {
-        viewUrl = `https://spaces.im/music/view/${file.id}/`;
-      } else if (file.type === 25) {
-        viewUrl = `https://spaces.im/video/view/${file.id}/`;
-      } else if (file.type === 5) {
-        viewUrl = `https://spaces.im/files/view/${file.id}/`;
-      } else {
-        viewUrl = `https://spaces.im/files/view/${file.id}/`;
-      }
-    }
+      : buildSpacesUrl(file.type, file.id, 'view');
     
     const extractedUrl = await extractDownloadUrlFromFilePage(viewUrl, cookies);
     if (extractedUrl) {
       fileUrl = extractedUrl;
     } else {
-      if (file.type === 7) {
-        fileUrl = `https://spaces.im/pictures/download/${file.id}/`;
-      } else if (file.type === 6) {
-        fileUrl = `https://spaces.im/music/download/${file.id}/`;
-      } else if (file.type === 25) {
-        fileUrl = `https://spaces.im/video/download/${file.id}/`;
-      } else if (file.type === 5) {
-        fileUrl = `https://spaces.im/files/download/${file.id}/`;
-      } else {
-        fileUrl = `https://spaces.im/files/download/${file.id}/`;
-      }
+      fileUrl = buildSpacesUrl(file.type, file.id, 'download');
     }
   }
   

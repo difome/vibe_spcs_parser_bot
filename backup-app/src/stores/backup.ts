@@ -4,6 +4,7 @@ import type { File, Folder, BackupStatus, SaveMode, FileDownloadProgress, UserSe
 import { scanFolder, collectAllFiles, scanProfileByUrl, getProfileSections } from '@/utils/scanner'
 import { downloadAndSaveFileOnServer } from '@/utils/fileSaver'
 import { createCookiesFromSid } from '@/utils/cookies'
+import { buildSpacesUrl } from '@/config'
 import { useAuthStore } from '@/stores/auth'
 
 export const useBackupStore = defineStore('backup', () => {
@@ -400,17 +401,7 @@ export const useBackupStore = defineStore('backup', () => {
       return file.downloadUrl.startsWith('http') ? file.downloadUrl : `https://spaces.im${file.downloadUrl}`
     }
 
-    if (file.type === 7) {
-      return `https://spaces.im/pictures/view/${file.id}/`
-    } else if (file.type === 6) {
-      return `https://spaces.im/music/view/${file.id}/`
-    } else if (file.type === 25) {
-      return `https://spaces.im/video/view/${file.id}/`
-    } else if (file.type === 5) {
-      return `https://spaces.im/files/view/${file.id}/`
-    } else {
-      return `https://spaces.im/files/view/${file.id}/`
-    }
+    return buildSpacesUrl(file.type, file.id, 'view')
   }
 
   return {
