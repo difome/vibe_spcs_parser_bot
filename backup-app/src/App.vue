@@ -140,7 +140,7 @@
                     v-if="backupStore.scannedFiles.length === 0"
                     @click="backupStore.scan()"
                     :disabled="!backupStore.canScan || backupStore.inProgress"
-                    class="flex-1 px-6 py-3 cursor-pointer disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+                    class="flex-1 px-6 py-3 cursor-pointer disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
                     :style="{ backgroundColor: '#4563a1' }"
                     :class="{ 'hover:opacity-90': !backupStore.inProgress && backupStore.canScan }"
                   >

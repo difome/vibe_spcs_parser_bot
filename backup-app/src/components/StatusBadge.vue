@@ -1,7 +1,7 @@
 <template>
   <span
     :class="[
-      'px-3 py-1 rounded-full text-xs font-medium',
+      'px-3 py-1 rounded-full text-sm font-medium',
       statusClasses[status] || statusClasses.idle,
     ]"
   >
