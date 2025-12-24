@@ -7,7 +7,7 @@
     <div class="flex-1 space-y-6">
       <template v-if="user">
         <div class="text-center">
-          <div class="w-20 h-20 rounded-full mx-auto mb-3 flex items-center justify-center overflow-hidden bg-dark-hover border border-dark-border">
+          <div class="w-10 h-10 rounded-full mx-auto mb-3 flex items-center justify-center overflow-hidden bg-dark-hover border border-dark-border">
             <img
               v-if="user.avatarUrl"
               :src="user.avatarUrl"
@@ -26,7 +26,7 @@
               </svg>
             </div>
           </div>
-          <h3 class="text-white font-semibold text-lg mb-4">{{ user.username }}</h3>
+          <h3 class="text-white font-semibold text-ыь mb-4">{{ user.username }}</h3>
         </div>
 
         <div class="space-y-2">
