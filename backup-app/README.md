@@ -6,46 +6,40 @@ Web application for backing up files from spaces.im
 
 ### Implemented
 
-- ✅ Authentication via cookies (Netscape Cookie File)
+- ✅ Authentication via SID cookie
 - ✅ Automatic detection of user sections (Photos, Music, Video, Files)
 - ✅ Section selection for backup
-- ✅ Recursive folder and subfolder scanning
 - ✅ File parsing from all sections (photos, music, files)
-- ✅ Pagination handling during scanning
-- ✅ Password-protected folder skipping
-- ✅ Download link extraction from file pages (if direct link is unavailable)
+- ✅ Password-protected folder handling (only for authorized user's personal files)
 - ✅ Two save modes:
   - Folder structure (preserves hierarchy)
   - All files in one folder (flat structure)
 - ✅ Direct file saving via server-side download
-- ✅ Download progress with speed display
-- ✅ Progress by file count and size
+- ✅ Download progress tracking with speed and file count/size metrics
 - ✅ File list with pagination
 - ✅ Retry download for failed files
 - ✅ Files saved immediately after download (doesn't wait for all to complete)
 - ✅ Cookie and user data storage in localStorage
-- ✅ Collapsible authorization panel
-- ✅ Reset scan results button
+- ✅ Reset scan results
 - ✅ Debug console for troubleshooting
 
 ### Not Implemented
 
-- ❌ Video downloading
-- ❌ Resuming interrupted downloads
-- ❌ Downloaded file integrity check
+- ❌ Downloading multiple files simultaneously
+- ❌ Selecting specific folders or files from sections
 
 ## Usage
 
 ### Installation
 
 ```bash
-npm install
+yarn install
 ```
 
 ### Running
 
 ```bash
-npm start
+yarn start
 ```
 
 3. Open browser at `http://localhost:5173`
@@ -55,7 +49,7 @@ npm start
 1. **Authentication:**
    - Copy the `sid` cookie value
    - Paste it into the "SID" field
-   - Click "Войти" (Login)
+   - Click "Login"
    - The application will automatically detect your sections
 
 2. **Section Selection:**
@@ -63,17 +57,17 @@ npm start
    - Multiple sections can be selected
 
 3. **Scanning:**
-   - Click "Сканировать файлы" (Scan Files)
+   - Click "Scan Files"
    - Wait for scanning to complete
    - Review the list of found files
 
 4. **Saving:**
    - Select save mode (Folder Structure or All Files in One Folder)
-   - Click "Сохранить" (Save)
+   - Click "Save"
    - Wait for download to complete
 
 5. **Retry on Errors:**
-   - If a file failed to download, click "Повторить" (Retry) next to the file
+   - If a file failed to download, click "Retry" next to the file
    - The file will be downloaded and saved separately
 
 ## Technologies
@@ -96,7 +90,7 @@ backup-app/
 │   ├── utils/          # Utility functions
 │   ├── types/          # TypeScript types
 │   └── App.vue         # Main component
-├── server.js           # Proxy server for CORS bypass
+├── server.ts           # Proxy server for CORS bypass
 └── package.json
 ```
 
@@ -117,46 +111,40 @@ backup-app/
 
 ### Реализовано
 
-- ✅ Авторизация через cookies (Netscape Cookie File)
+- ✅ Авторизация через SID cookie
 - ✅ Автоматическое определение разделов пользователя (Фотографии, Музыка, Видео, Файлы)
 - ✅ Выбор разделов для резервного копирования
-- ✅ Рекурсивное сканирование папок и подпапок
 - ✅ Парсинг файлов из всех разделов (фотографии, музыка, файлы)
-- ✅ Обработка пагинации при сканировании
-- ✅ Пропуск папок с паролем
-- ✅ Извлечение ссылок на скачивание со страниц файлов (если прямой ссылки нет)
+- ✅ Обработка папок с паролем (только у личных файлов авторизованного пользователя)
 - ✅ Два режима сохранения:
   - Структура папок (сохраняет иерархию)
   - Все файлы в одну папку (плоская структура)
 - ✅ Сохранение файлов напрямую через сервер
-- ✅ Прогресс скачивания с отображением скорости
-- ✅ Прогресс по количеству файлов и размеру
+- ✅ Отслеживание прогресса скачивания с отображением скорости и метрик по количеству/размеру файлов
 - ✅ Список файлов с пагинацией
 - ✅ Повторная попытка скачивания для файлов с ошибками
 - ✅ Сохранение файлов сразу после скачивания (не ждет завершения всех)
 - ✅ Сохранение cookies и данных пользователя в localStorage
-- ✅ Сворачиваемая панель авторизации
-- ✅ Кнопка сброса результатов сканирования
+- ✅ Сброс результатов сканирования
 - ✅ Консоль отладки для диагностики
 
 ### Не реализовано
 
-- ❌ Скачивание видео
-- ❌ Возобновление прерванного скачивания
-- ❌ Проверка целостности скачанных файлов
+- ❌ Скачивание несколько файлов сразу
+- ❌ Выбор папок или файлов из разделов
 
 ## Использование
 
 ### Установка
 
 ```bash
-npm install
+yarn install
 ```
 
 ### Запуск
 
 ```bash
-npm start
+yarn start
 ```
 
 3. Откройте браузер по адресу `http://localhost:5173`
@@ -207,13 +195,6 @@ backup-app/
 │   ├── utils/          # Вспомогательные функции
 │   ├── types/          # TypeScript типы
 │   └── App.vue         # Главный компонент
-├── server.js           # Прокси-сервер для обхода CORS
+├── server.ts           # Прокси-сервер для обхода CORS
 └── package.json
 ```
-
-## Примечания
-
-- Cookies сохраняются в localStorage браузера
-- Требуется современный браузер (Chrome, Edge, Firefox)
-- Прокси-сервер необходим для обхода CORS ограничений
-- Файлы сохраняются напрямую в папку downloads на сервере
