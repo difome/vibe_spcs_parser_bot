@@ -67,7 +67,9 @@
                   v-if="!authStore.user"
                   @click="authStore.loadUserData()"
                   :disabled="!canLoad || backupStore.inProgress"
-                  class="px-4 py-2 bg-gray-700 hover:bg-gray-600 mt-5 text-white text-sm font-normal rounded-md transition-colors"
+                  class="px-4 py-2 disabled:bg-gray-600 disabled:cursor-not-allowed mt-5 text-white text-sm font-normal rounded-md transition-colors"
+                  :style="{ backgroundColor: '#61a961' }"
+                  :class="{ 'hover:opacity-90': canLoad && !backupStore.inProgress }"
                 >
                   Войти
                 </button>
@@ -124,7 +126,9 @@
                     <button
                       @click="handleScanProfile"
                       :disabled="backupStore.selectedProfileSections.length === 0 || backupStore.inProgress"
-                      class="mt-3 w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+                      class="mt-3 w-full px-4 py-2 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+                      :style="{ backgroundColor: '#4563a1' }"
+                      :class="{ 'hover:opacity-90': backupStore.selectedProfileSections.length > 0 && !backupStore.inProgress }"
                     >
                       {{ backupStore.status === 'scanning' ? 'Сканирование...' : 'Сканировать выбранные разделы' }}
                     </button>
@@ -136,7 +140,9 @@
                     v-if="backupStore.scannedFiles.length === 0"
                     @click="backupStore.scan()"
                     :disabled="!backupStore.canScan || backupStore.inProgress"
-                    class="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+                    class="flex-1 px-6 py-3 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+                    :style="{ backgroundColor: '#4563a1' }"
+                    :class="{ 'hover:opacity-90': !backupStore.inProgress && backupStore.canScan }"
                   >
                     {{ backupStore.status === 'scanning' ? 'Сканирование...' : 'Сканировать файлы' }}
                   </button>
@@ -151,7 +157,9 @@
                     <button
                       @click="backupStore.download()"
                       :disabled="!backupStore.canDownload || backupStore.inProgress"
-                      class="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+                      class="flex-1 px-6 py-3 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+                      :style="{ backgroundColor: '#61a961' }"
+                      :class="{ 'hover:opacity-90': backupStore.canDownload && !backupStore.inProgress }"
                     >
                       <template v-if="backupStore.status === 'downloading'">Скачивание...</template>
                       <template v-else-if="backupStore.status === 'saving'">Сохранение...</template>
