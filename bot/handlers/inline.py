@@ -48,11 +48,11 @@ from utils.cache import (
 
 logger = logging.getLogger(__name__)
 router = Router()
+import html as html_module
 
 @router.inline_query()
 async def inline_query_handler(inline_query: InlineQuery):
     """Обработчик inline запросов"""
-    from services.spaces import cookies_loaded
     if not cookies_loaded:
         await load_and_save_cookies()
 
@@ -316,7 +316,6 @@ async def inline_query_handler(inline_query: InlineQuery):
 @router.chosen_inline_result()
 async def chosen_inline_result_handler(chosen_result: ChosenInlineResult, bot: Bot):
     """Обработчик выбора результата inline запроса"""
-    from services.spaces import cookies_loaded
     result_id = chosen_result.result_id
 
     if not cookies_loaded:
@@ -345,25 +344,25 @@ async def chosen_inline_result_handler(chosen_result: ChosenInlineResult, bot: B
                         original_url = picture.get('photo_url')
 
                     if original_url and chosen_result.inline_message_id:
-                        search_query = picture.get('search_query', '')
-                        photo_title = picture.get('title', '')
+                        search_query = html_module.escape(picture.get('search_query', ''))
+                        photo_title = html_module.escape(picture.get('title', ''))
 
                         caption_parts = []
                         if search_query: caption_parts.append(f"🔍 Поиск: {search_query}")
                         if photo_title: caption_parts.append(f"📷 {photo_title}")
 
                         if photo_info.get('description'):
-                            desc = photo_info['description']
+                            desc = html_module.escape(photo_info['description'])
                             if len(desc) > 700: desc = desc[:697] + "..."
                             caption_parts.append(f"\n{desc}")
 
                         author_text = ""
                         if photo_info.get('author_name'):
-                            author_text = f"👤 {photo_info['author_name']}"
+                            author_text = f"👤 {html_module.escape(photo_info['author_name'])}"
                             if photo_info.get('author_date'):
-                                author_text += f" ({photo_info['author_date']})"
+                                author_text += f" ({html_module.escape(photo_info['author_date'])})"
                         elif photo_info.get('author_date'):
-                            author_text = f"📅 {photo_info['author_date']}"
+                            author_text = f"📅 {html_module.escape(photo_info['author_date'])}"
 
                         if author_text:
                             caption_parts.append(f"<b>{author_text}</b>")
@@ -371,7 +370,7 @@ async def chosen_inline_result_handler(chosen_result: ChosenInlineResult, bot: B
                         caption = "\n".join(caption_parts)
 
                         keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                            [InlineKeyboardButton(text="🔍 Найти еще", switch_inline_query_current_chat=f"-к1 {search_query}")],
+                            [InlineKeyboardButton(text="🔍 Найти еще", switch_inline_query_current_chat=f"-к1 {picture.get('search_query', '')}")],
                             [InlineKeyboardButton(text="📷 Страница фото", url=picture['view_url'])],
                             [InlineKeyboardButton(text="Перейти в бота", url=settings.bot_link)]
                         ])
@@ -399,21 +398,21 @@ async def chosen_inline_result_handler(chosen_result: ChosenInlineResult, bot: B
                         download_url = await get_final_download_url(video_data['download_url'])
 
                         caption_parts = []
-                        if video.get('search_query'): caption_parts.append(f"🔍 Поиск: {video['search_query']}")
-                        caption_parts.append(f"📹 {video['name']}")
+                        if video.get('search_query'): caption_parts.append(f"🔍 Поиск: {html_module.escape(video['search_query'])}")
+                        caption_parts.append(f"📹 {html_module.escape(video['name'])}")
 
                         if video_data.get('description'):
-                            desc = video_data['description']
+                            desc = html_module.escape(video_data['description'])
                             if len(desc) > 700: desc = desc[:697] + "..."
                             caption_parts.append(f"\n{desc}")
 
                         author_info = ""
                         if video_data.get('author_name'):
-                            author_info = f"👤 {video_data['author_name']}"
+                            author_info = f"👤 {html_module.escape(video_data['author_name'])}"
                             if video_data.get('author_date'):
-                                author_info += f" ({video_data['author_date']})"
+                                author_info += f" ({html_module.escape(video_data['author_date'])})"
                         elif video_data.get('author_date'):
-                            author_info = f"📅 {video_data['author_date']}"
+                            author_info = f"📅 {html_module.escape(video_data['author_date'])}"
 
                         if author_info:
                             caption_parts.append(f"<b>{author_info}</b>")
@@ -462,8 +461,8 @@ async def chosen_inline_result_handler(chosen_result: ChosenInlineResult, bot: B
             if track and track.get('url') and chosen_result.inline_message_id:
                 final_url = await get_final_download_url(track['url'])
 
-                caption = f"🎵 {track['name']}"
-                if track.get('category'): caption += f"\n📁 {track['category']}"
+                caption = f"🎵 {html_module.escape(track['name'])}"
+                if track.get('category'): caption += f"\n📁 {html_module.escape(track['category'])}"
 
                 keyboard = InlineKeyboardMarkup(inline_keyboard=[
                     [InlineKeyboardButton(text="Перейти в бота", url=settings.bot_link)]
