@@ -337,6 +337,10 @@ async def chosen_inline_result_handler(chosen_result: ChosenInlineResult, bot: B
         if result_id.startswith('pic_'):
             picture = picture_info_cache.get(result_id)
             if picture and picture.get('view_url'):
+                # Удаляем из кэша
+                if result_id in picture_info_cache:
+                    del picture_info_cache._cache[result_id]
+
                 async with httpx.AsyncClient(cookies=SPACES_COOKIES, timeout=30.0, follow_redirects=True) as client:
                     response = await client.get(picture['view_url'], headers=get_request_headers())
                     html_text = response.text
@@ -402,6 +406,10 @@ async def chosen_inline_result_handler(chosen_result: ChosenInlineResult, bot: B
         elif result_id.startswith('vid_'):
             video = video_info_cache.get(result_id)
             if video and video.get('view_url'):
+                # Удаляем из кэша
+                if result_id in video_info_cache:
+                    del video_info_cache._cache[result_id]
+
                 async with httpx.AsyncClient(cookies=SPACES_COOKIES, timeout=30.0, follow_redirects=True) as client:
                     response = await client.get(video['view_url'], headers=get_request_headers())
                     video_data = get_video_download_url_from_html(response.text)
@@ -471,6 +479,10 @@ async def chosen_inline_result_handler(chosen_result: ChosenInlineResult, bot: B
         else:
             track = track_info_cache.get(result_id)
             if track and track.get('url') and chosen_result.inline_message_id:
+                # Удаляем из кэша сразу после получения, так как больше этот ID нам не понадобится
+                if result_id in track_info_cache:
+                    del track_info_cache._cache[result_id]
+
                 final_url = await get_final_download_url(track['url'])
 
                 caption = f"🎵 {html_module.escape(track['name'])}"
