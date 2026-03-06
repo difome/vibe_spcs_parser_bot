@@ -53,8 +53,8 @@ import html as html_module
 @router.inline_query()
 async def inline_query_handler(inline_query: InlineQuery):
     """Обработчик inline запросов"""
-    if not cookies_loaded:
-        await load_and_save_cookies()
+    # if not cookies_loaded:
+    #     await load_and_save_cookies()
 
     try:
         query = inline_query.query.strip() if inline_query.query else ""
