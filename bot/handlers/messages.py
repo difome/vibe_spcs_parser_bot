@@ -16,10 +16,10 @@ async def start_handler(message: types.Message):
         "Просто напиши в поле ввода сообщения юзернейм бота и свой запрос:\n"
         f"<code>@{settings.bot_username} твой запрос</code>\n\n"
         "⌨️ <b>Префиксы для поиска:</b>\n"
-        "🔹 <code>-м1 ваш запрос</code> — Поиск музыки (файлы)\n"
-        "🔹 <code>-в1 ваш запрос</code> — Поиск видео\n"
-        "🔹 <code>-к1 ваш запрос</code> — Поиск картинок и фото\n"
-        "🔹 <i>Без префикса</i> — Общий поиск музыки\n\n"
+        f"🎧 <code>@{settings.bot_username} музыка </code> ваш запрос — Поиск музыки (файлы)\n"
+        f"🎬 <code>@{settings.bot_username} видео </code> ваш запрос — Поиск видео\n"
+        f"🖼 <code>@{settings.bot_username} фото </code> ваш запрос — Поиск картинок и фото\n"
+        f"🎵<code>@{settings.bot_username}</code> <i>Без префикса</i> — Общий поиск музыки\n\n"
         "Попробуй прямо сейчас!"
     )
 

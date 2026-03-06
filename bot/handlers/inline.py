@@ -79,9 +79,9 @@ async def inline_query_handler(inline_query: InlineQuery):
                     input_message_content=InputTextMessageContent(
                         message_text=(
                             "🔎 <b>Доступные префиксы для поиска:</b>\n\n"
-                            f"🎧 <code>@{settings.bot_username} -м1</code> ваш запрос — Поиск музыки (файлы)\n"
-                            f"🎬 <code>@{settings.bot_username} -в1</code> ваш запрос — Поиск видео\n"
-                            f"🖼 <code>@{settings.bot_username} -к1</code> ваш запрос — Поиск картинок\n"
+                            f"🎧 <code>@{settings.bot_username} музыка</code> ваш запрос — Поиск музыки (файлы)\n"
+                            f"🎬 <code>@{settings.bot_username} видео</code> ваш запрос — Поиск видео\n"
+                            f"🖼 <code>@{settings.bot_username} фото</code> ваш запрос — Поиск картинок\n"
                             f"🎵 <code>@{settings.bot_username}</code> запрос — Общий музыкальный поиск"
                         ),
                         parse_mode="HTML"
@@ -93,28 +93,40 @@ async def inline_query_handler(inline_query: InlineQuery):
 
             # 2. Рандомные треки убраны по требованию пользователя
 
-            await inline_query.answer(results=results, cache_time=1)
+            await inline_query.answer(results=results, cache_time=0)
             return
 
-        is_picture_search = query.startswith('-к1') or query.startswith('-к1 ')
+        is_picture_search = (
+            query.startswith('-к1') or query.startswith('-к') or
+            query.startswith('-p1') or query.startswith('-p') or
+            query.lower().startswith('photo') or query.lower().startswith('фото')
+        )
         if is_picture_search:
-            query = query.replace('-к1', '').strip()
+            query = re.sub(r'^(-к1?|-p1?|photo|фото)\s*', '', query, flags=re.IGNORECASE).strip()
             if not query:
-                await inline_query.answer(results=[], cache_time=1)
+                await inline_query.answer(results=[], cache_time=0)
                 return
 
-        is_music_files_search = query.startswith('-м1') or query.startswith('-м1 ')
+        is_music_files_search = (
+            query.startswith('-м1') or query.startswith('-м') or
+            query.startswith('-m1') or query.startswith('-m') or
+            query.lower().startswith('music') or query.lower().startswith('музык')
+        )
         if is_music_files_search:
-            query = query.replace('-м1', '').strip()
+            query = re.sub(r'^(-м1?|-m1?|music|музык[аи]?)\s*', '', query, flags=re.IGNORECASE).strip()
             if not query:
-                await inline_query.answer(results=[], cache_time=1)
+                await inline_query.answer(results=[], cache_time=0)
                 return
 
-        is_video_files_search = query.startswith('-в1') or query.startswith('-в1 ')
+        is_video_files_search = (
+            query.startswith('-в1') or query.startswith('-в') or
+            query.startswith('-v1') or query.startswith('-v') or
+            query.lower().startswith('video') or query.lower().startswith('видео')
+        )
         if is_video_files_search:
-            query = query.replace('-в1', '').strip()
+            query = re.sub(r'^(-в1?|-v1?|video|видео)\s*', '', query, flags=re.IGNORECASE).strip()
             if not query:
-                await inline_query.answer(results=[], cache_time=1)
+                await inline_query.answer(results=[], cache_time=0)
                 return
 
         # Для поиска видео через files/search
@@ -137,10 +149,10 @@ async def inline_query_handler(inline_query: InlineQuery):
                         parse_mode="HTML"
                     )
                 )
-                await inline_query.answer(results=[result], cache_time=1)
+                await inline_query.answer(results=[result], cache_time=0)
                 return
             elif not videos:
-                await inline_query.answer(results=[], cache_time=1, next_offset="")
+                await inline_query.answer(results=[], cache_time=0, next_offset="")
                 return
 
             results = []
@@ -150,7 +162,7 @@ async def inline_query_handler(inline_query: InlineQuery):
                 video_info_cache[result_id] = video
 
                 keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="🔍 Найти еще", switch_inline_query_current_chat=f"-в1 {query}")],
+                    [InlineKeyboardButton(text="🔍 Найти еще", switch_inline_query_current_chat=f"видео {query}")],
                     [InlineKeyboardButton(text="📹 Страница видео", url=video.get('view_url'))] if video.get('view_url') else [],
                     [InlineKeyboardButton(text="Перейти в бота", url=settings.bot_link)]
                 ])
@@ -198,10 +210,10 @@ async def inline_query_handler(inline_query: InlineQuery):
                         parse_mode="HTML"
                     )
                 )
-                await inline_query.answer(results=[result], cache_time=1)
+                await inline_query.answer(results=[result], cache_time=0)
                 return
             elif not tracks:
-                await inline_query.answer(results=[], cache_time=1, next_offset="")
+                await inline_query.answer(results=[], cache_time=0, next_offset="")
                 return
 
             results = []
@@ -209,7 +221,7 @@ async def inline_query_handler(inline_query: InlineQuery):
                 result_id = str(random.randint(1000000, 9999999))
                 track_info_cache[result_id] = track
                 keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="🔍 Найти еще", switch_inline_query_current_chat=f"-м1 {query}")],
+                    [InlineKeyboardButton(text="🔍 Найти еще", switch_inline_query_current_chat=f"музыка {query}")],
                     [InlineKeyboardButton(text="Перейти в бота", url=settings.bot_link)]
                 ])
                 results.append(InlineQueryResultAudio(
@@ -244,7 +256,7 @@ async def inline_query_handler(inline_query: InlineQuery):
                         parse_mode="HTML"
                     )
                 )
-                await inline_query.answer(results=[result], cache_time=1)
+                await inline_query.answer(results=[result], cache_time=0)
                 return
 
             results = []
@@ -253,7 +265,7 @@ async def inline_query_handler(inline_query: InlineQuery):
                 picture_info_cache[result_id] = {**picture, 'search_query': query}
 
                 keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="🔍 Найти еще", switch_inline_query_current_chat=f"-к1 {query}")],
+                    [InlineKeyboardButton(text="🔍 Найти еще", switch_inline_query_current_chat=f"фото {query}")],
                     [InlineKeyboardButton(text="📷 Страница фото", url=picture['view_url'])] if picture.get('view_url') else [],
                     [InlineKeyboardButton(text="Перейти в бота", url=settings.bot_link)]
                 ])
@@ -282,7 +294,7 @@ async def inline_query_handler(inline_query: InlineQuery):
         tracks, max_pages, current_page = await search_music(query, page_num, cache_key)
 
         if not tracks:
-            await inline_query.answer(results=[], cache_time=1)
+            await inline_query.answer(results=[], cache_time=0)
             return
 
         results = []
@@ -305,13 +317,13 @@ async def inline_query_handler(inline_query: InlineQuery):
 
         await inline_query.answer(
             results=results,
-            cache_time=1,
+            cache_time=0,
             next_offset=str(current_page + 1) if max_pages and current_page < max_pages else None
         )
 
     except Exception as e:
         logger.error(f"Ошибка в inline_query_handler: {e}", exc_info=True)
-        await inline_query.answer(results=[], cache_time=1)
+        await inline_query.answer(results=[], cache_time=0)
 
 @router.chosen_inline_result()
 async def chosen_inline_result_handler(chosen_result: ChosenInlineResult, bot: Bot):
@@ -370,7 +382,7 @@ async def chosen_inline_result_handler(chosen_result: ChosenInlineResult, bot: B
                         caption = "\n".join(caption_parts)
 
                         keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                            [InlineKeyboardButton(text="🔍 Найти еще", switch_inline_query_current_chat=f"-к1 {picture.get('search_query', '')}")],
+                            [InlineKeyboardButton(text="🔍 Найти еще", switch_inline_query_current_chat=f"фото {picture.get('search_query', '')}")],
                             [InlineKeyboardButton(text="📷 Страница фото", url=picture['view_url'])],
                             [InlineKeyboardButton(text="Перейти в бота", url=settings.bot_link)]
                         ])
@@ -420,7 +432,7 @@ async def chosen_inline_result_handler(chosen_result: ChosenInlineResult, bot: B
                         caption = "\n".join(caption_parts)
 
                         keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                            [InlineKeyboardButton(text="🔍 Найти еще", switch_inline_query_current_chat=f"-в1 {video.get('search_query', '')}")],
+                            [InlineKeyboardButton(text="🔍 Найти еще", switch_inline_query_current_chat=f"видео {video.get('search_query', '')}")],
                             [InlineKeyboardButton(text="📹 Страница видео", url=video['view_url'])],
                             [InlineKeyboardButton(text="Перейти в бота", url=settings.bot_link)]
                         ])
