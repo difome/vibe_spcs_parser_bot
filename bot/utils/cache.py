@@ -1,0 +1,9 @@
+track_info_cache = {}
+picture_info_cache = {}
+video_info_cache = {}
+search_cache = {}
+picture_search_cache = {}
+music_files_search_cache = {}
+video_files_search_cache = {}
+categories_cache = None
+tracks_cache = {}
